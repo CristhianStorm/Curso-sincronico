@@ -110,6 +110,11 @@ public class AuthService {
         nuevoUsuario.setRol("estudiante");
         nuevoUsuario.setEstado("pendiente_pago");
         nuevoUsuario.setFechaRegistro(new Date());
+        
+        // --- ¡CAMBIO IMPORTANTE! ---
+        // Guardamos el email del tutor en la cuenta del estudiante.
+        nuevoUsuario.setEmailTutor(pendiente.getEmailTutor());
+
         usuarioRepository.save(nuevoUsuario);
 
         // Eliminamos el registro pendiente para que el token no pueda ser usado de nuevo.
@@ -117,4 +122,3 @@ public class AuthService {
         return "¡Cuenta activada exitosamente! Ahora el estudiante puede proceder al pago.";
     }
 }
-

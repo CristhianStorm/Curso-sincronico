@@ -31,9 +31,11 @@ public class DocenteService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @Autowired
+    private EmailService emailService;
+
     /**
      * Obtiene todas las consultas del sistema.
-     * En una versión más avanzada, esto podría filtrar por docente asignado.
      * @return Una lista de todas las consultas.
      */
     public List<Consulta> getAllConsultas() {
@@ -41,8 +43,49 @@ public class DocenteService {
     }
 
     /**
+     * ¡MÉTODO CORREGIDO!
+     * Orquesta el agendamiento de una llamada, actualizando la consulta y notificando por email.
+     * @param consultaId El ID de la consulta a agendar.
+     * @param fechaHoraTimestamp El timestamp en milisegundos de la fecha y hora para la llamada.
+     * @param docenteEmail El email del docente que realiza la acción.
+     * @return La consulta actualizada.
+     */
+    @Transactional
+    public Consulta agendarLlamada(Long consultaId, Long fechaHoraTimestamp, String docenteEmail) {
+        Usuario docente = usuarioRepository.findByEmail(docenteEmail)
+            .orElseThrow(() -> new UsernameNotFoundException("Docente no encontrado"));
+
+        Consulta consulta = consultaRepository.findById(consultaId)
+            .orElseThrow(() -> new RuntimeException("Consulta no encontrada"));
+
+        Usuario estudiante = usuarioRepository.findById(consulta.getIdEstudiante())
+            .orElseThrow(() -> new RuntimeException("Estudiante no encontrado para la consulta"));
+
+        // Convertimos el timestamp (Long) a un objeto Date de Java
+        Date fechaAgendada = new Date(fechaHoraTimestamp);
+
+        // Actualizamos la consulta
+        consulta.setFechaLlamadaAgendada(fechaAgendada);
+        consulta.setEstado("Agendada");
+        consulta.setIdDocenteAsignado(docente.getId());
+        Consulta consultaActualizada = consultaRepository.save(consulta);
+
+        // Enviamos el correo de notificación
+        emailService.sendSchedulingConfirmationEmail(
+            estudiante.getEmail(),
+            estudiante.getEmailTutor(), // Puede ser null, el EmailService lo maneja
+            estudiante.getNombreCompleto(),
+            docente.getNombreCompleto(),
+            fechaAgendada,
+            consulta.getTitulo()
+        );
+
+        return consultaActualizada;
+    }
+
+
+    /**
      * Crea un informe para una consulta y luego actualiza el estado de la consulta a "Respondida".
-     * Se ejecuta como una única transacción para garantizar la integridad de los datos.
      * @param informeDTO Los datos del informe (puntos fuertes, etc.).
      * @param consultaId El ID de la consulta a la que pertenece el informe.
      * @param docenteEmail El email del docente que está creando el informe.
@@ -74,7 +117,6 @@ public class DocenteService {
 
     /**
      * Inicia una llamada para una consulta.
-     * Genera un nombre de sala único, lo guarda en la consulta y actualiza su estado.
      * @param consultaId El ID de la consulta.
      * @return La consulta actualizada con el nombre de la sala.
      */
@@ -82,7 +124,6 @@ public class DocenteService {
         Consulta consulta = consultaRepository.findById(consultaId)
             .orElseThrow(() -> new RuntimeException("Consulta no encontrada"));
 
-        // Generamos un nombre de sala único y difícil de adivinar
         String nombreSala = "TutorIA-" + consultaId + "-" + UUID.randomUUID().toString().substring(0, 8);
         
         consulta.setSalaLlamada(nombreSala);
@@ -91,4 +132,3 @@ public class DocenteService {
         return consultaRepository.save(consulta);
     }
 }
-

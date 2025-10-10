@@ -44,15 +44,22 @@ public class Consulta {
     private String estado;
 
     /**
-     * ¡CAMPO NUEVO!
      * Almacena el nombre único de la sala de videollamada (ej: de Jitsi).
      */
     @Column(name = "SALA_LLAMADA")
     private String salaLlamada;
+
+    /**
+     * ¡CAMPO NUEVO!
+     * Almacena la fecha y hora exactas en que se ha programado una videollamada.
+     */
+    @Temporal(TemporalType.TIMESTAMP) // Importante para guardar fecha y hora
+    @Column(name = "FECHA_LLAMADA_AGENDADA")
+    private Date fechaLlamadaAgendada;
+
 
     @Temporal(TemporalType.DATE)
     @Column(name = "FECHA_CREACION", updatable = false)
     @ColumnDefault("SYSDATE")
     private Date fechaCreacion;
 }
-

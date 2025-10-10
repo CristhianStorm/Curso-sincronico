@@ -89,10 +89,12 @@
 
         const renderQuestions = () => {
             queueContainer.innerHTML = '';
-            // Filtro flexible para que "Llamada en curso" también aparezca en "Nuevas"
+            
+            // --- ¡FILTRO ACTUALIZADO! ---
+            // Ahora también muestra el nuevo estado "Agendada" en la pestaña de "Nuevas Consultas"
             const filteredQuestions = allQuestions.filter(q => {
                 if (currentStatusFilter === 'Pendiente') {
-                    return q.estado === 'Pendiente' || q.estado === 'Llamada en curso';
+                    return ['Pendiente', 'Llamada en curso', 'Agendada'].includes(q.estado);
                 }
                 return q.estado === 'Respondida'; // Pestaña de Atendidas
             });
@@ -105,18 +107,48 @@
             filteredQuestions.forEach(q => {
                 const callBadge = q.solicitaLlamada === 'S' ? `<span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">📞 Requiere Llamada</span>` : '';
                 
+                // --- ¡LÓGICA DE BOTONES COMPLETAMENTE ACTUALIZADA! ---
                 let actions = '';
                 if (q.estado === 'Pendiente' && q.solicitaLlamada === 'S') {
-                    actions = `<button data-id="${q.id}" class="start-call-btn btn btn-primary">Iniciar Llamada</button>`;
+                    // 1. Si requiere llamada y está pendiente, mostramos el botón para agendar.
+                    actions = `<a href="/agendar_llamada.html?consultaId=${q.id}" class="btn bg-amber-500 hover:bg-amber-600 text-white">Agendar Llamada</a>`;
+                
+                } else if (q.estado === 'Agendada') {
+                    // 2. Si ya está agendada, mostramos la fecha y el botón para iniciar la llamada.
+                    const fechaAgendada = new Date(q.fechaLlamadaAgendada).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+                    actions = `<div class="text-right">
+                                 <p class="text-sm font-semibold text-gray-700">Agendada: ${fechaAgendada} hs.</p>
+                                 <button data-id="${q.id}" class="start-call-btn btn btn-primary mt-2">Iniciar Llamada Ahora</button>
+                               </div>`;
+
                 } else if (q.estado === 'Pendiente') {
+                    // 3. Si está pendiente pero no requiere llamada, va directo al informe.
                     actions = `<a href="/informe_docente.html?consultaId=${q.id}" class="btn btn-primary">Crear Informe</a>`;
+
                 } else if (q.estado === 'Llamada en curso') {
+                    // 4. Si la llamada ya inició, permite reunirse.
                      actions = `<a href="/llamada.html?sala=${q.salaLlamada}&consultaId=${q.id}&role=docente" class="btn bg-green-500 hover:bg-green-700 text-white">Reunirse a la Llamada</a>`;
-                } else {
+
+                } else { // estado === 'Respondida'
+                    // 5. Si ya se respondió, no hay más acciones.
                     actions = `<span class="text-sm font-semibold text-green-600">Informe Enviado</span>`;
                 }
 
-                const cardHTML = `<div class="bg-white p-5 rounded-lg shadow"><div class="flex flex-col sm:flex-row sm:items-center sm:justify-between"><div class="flex-grow"><div class="flex items-center gap-4 mb-2"><p class="text-sm font-bold">Estudiante ID: ${q.idEstudiante}</p>${callBadge}</div><h3 class="text-lg font-semibold text-gray-900">${q.titulo}</h3><p class="text-sm text-gray-500 mt-1">${q.materia}</p></div><div class="flex-shrink-0 mt-4 sm:mt-0">${actions}</div></div></div>`;
+                const cardHTML = `<div class="bg-white p-5 rounded-lg shadow">
+                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                                        <div class="flex-grow">
+                                            <div class="flex items-center gap-4 mb-2">
+                                                <p class="text-sm font-bold">Estudiante ID: ${q.idEstudiante}</p>
+                                                ${callBadge}
+                                            </div>
+                                            <h3 class="text-lg font-semibold text-gray-900">${q.titulo}</h3>
+                                            <p class="text-sm text-gray-500 mt-1">${q.materia}</p>
+                                        </div>
+                                        <div class="flex-shrink-0 mt-4 sm:mt-0">
+                                            ${actions}
+                                        </div>
+                                    </div>
+                                  </div>`;
                 queueContainer.innerHTML += cardHTML;
             });
         };
@@ -131,6 +163,7 @@
         });
         
         queueContainer.addEventListener('click', async e => {
+            // El botón de "Iniciar Llamada" ahora sirve tanto para consultas agendadas como las que no
             if (e.target.classList.contains('start-call-btn')) {
                 const consultaId = e.target.dataset.id;
                 try {
@@ -157,4 +190,3 @@
     </script>
 </body>
 </html>
-

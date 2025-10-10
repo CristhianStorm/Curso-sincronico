@@ -52,6 +52,15 @@ public class Usuario implements UserDetails {
     @Column(name = "ESTADO")
     private String estado;
 
+    /**
+     * ¡CAMPO NUEVO!
+     * Almacena el correo del tutor para estudiantes menores de edad.
+     * Será nulo para usuarios mayores de edad.
+     */
+    @Column(name = "EMAIL_TUTOR")
+    private String emailTutor;
+
+
     @Column(name = "TOKEN_VERIFICACION")
     private String tokenVerificacion;
 
@@ -100,4 +109,3 @@ public class Usuario implements UserDetails {
         return true; 
     }
 }
-
