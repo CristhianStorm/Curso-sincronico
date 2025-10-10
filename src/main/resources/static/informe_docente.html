@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathlan - Completar Informe de Sesión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- SECCIÓN DE ESTILOS CORREGIDA -->
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8f7f4; 
+        }
+        .btn-primary { 
+            background-color: #0077b6; 
+            color: white; 
+            transition: background-color 0.3s ease; 
+        }
+        .btn-primary:hover { 
+            background-color: #023e8a; 
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+    <header class="bg-white shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <div class="text-2xl font-bold text-[#0077b6]">Mathlan<span class="text-[#023e8a]"></span> - Portal Docente</div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div id="form-container" class="max-w-3xl mx-auto bg-white p-8 rounded-lg shadow-md">
+            <div class="border-b pb-4 mb-6">
+                <h1 class="text-2xl font-bold text-gray-900">Informe de Sesión</h1>
+                <p id="info-consulta" class="text-gray-600 mt-1">Completando el resumen de la consulta.</p>
+            </div>
+            
+            <div id="message-container" class="hidden p-4 rounded-md text-sm mb-4"></div>
+
+            <form id="feedback-form">
+                <div class="space-y-6">
+                    <div>
+                        <label for="strengths" class="block text-sm font-semibold text-gray-900">Puntos Fuertes / Conceptos Dominados</label>
+                        <textarea id="strengths" required rows="4" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Ej: Carla demostró una excelente comprensión de la regla de la cadena..."></textarea>
+                    </div>
+                    <div>
+                        <label for="improvements" class="block text-sm font-semibold text-gray-900">Áreas a Practicar / Puntos a Reforzar</label>
+                        <textarea id="improvements" required rows="4" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Ej: Debe practicar más la derivación implícita..."></textarea>
+                    </div>
+                    <div>
+                        <label for="recommendations" class="block text-sm font-semibold text-gray-900">Recomendaciones y Siguientes Pasos</label>
+                        <textarea id="recommendations" rows="3" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm" placeholder="Ej: Recomiendo resolver los ejercicios del capítulo 3, sección 2."></textarea>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <button type="submit" class="w-full rounded-md btn-primary px-4 py-3 font-semibold text-white shadow-sm">Guardar y Enviar Informe</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('jwtToken');
+            if (!token) { window.location.href = '/login.html'; return; }
+            const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const consultaId = urlParams.get('consultaId');
+
+            if (!consultaId) {
+                document.querySelector('main').innerHTML = '<p class="text-red-500">Error: No se especificó un ID de consulta.</p>';
+                return;
+            }
+            
+            document.getElementById('info-consulta').textContent = `Completando el resumen de la consulta #${consultaId}.`;
+
+            const feedbackForm = document.getElementById('feedback-form');
+            const messageContainer = document.getElementById('message-container');
+
+            feedbackForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = {
+                    puntosFuertes: document.getElementById('strengths').value,
+                    areasAMejorar: document.getElementById('improvements').value,
+                    recomendaciones: document.getElementById('recommendations').value
+                };
+
+                try {
+                    const response = await fetch(`/api/docente/consultas/${consultaId}/informe`, {
+                        method: 'POST',
+                        headers,
+                        body: JSON.stringify(formData)
+                    });
+
+                    if (!response.ok) { throw new Error('No se pudo guardar el informe.'); }
+
+                    messageContainer.className = 'p-4 rounded-md text-sm mb-4 bg-green-100 text-green-800';
+                    messageContainer.textContent = '¡Informe enviado con éxito! Redirigiendo al dashboard...';
+                    messageContainer.classList.remove('hidden');
+
+                    setTimeout(() => {
+                        window.location.href = '/dashboard_docente.html';
+                    }, 2000);
+
+                } catch (error) {
+                    messageContainer.className = 'p-4 rounded-md text-sm mb-4 bg-red-100 text-red-800';
+                    messageContainer.textContent = error.message;
+                    messageContainer.classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+

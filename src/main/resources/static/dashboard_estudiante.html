@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathlan - Mi Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f7f4; }
+        .nav-link { transition: all 0.3s ease; position: relative; padding-bottom: 4px; }
+        .nav-link::after { content: ''; position: absolute; bottom: 0; left: 0; width: 0; height: 2px; background-color: #0077b6; transition: width 0.3s ease; }
+        .nav-link.active, .nav-link:hover { color: #0077b6; }
+        .nav-link.active::after, .nav-link:hover::after { width: 100%; }
+        .status-badge { padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 600; font-size: 0.75rem; text-transform: uppercase; }
+        .btn-primary { background-color: #0077b6; color: white; transition: background-color 0.3s ease; }
+        .btn-primary:hover { background-color: #023e8a; }
+        .btn-secondary { background-color: #e0e7ff; color: #3730a3; transition: background-color 0.2s; font-weight: 600; }
+        .btn-secondary:hover { background-color: #c7d2fe; }
+        .modal-backdrop { backdrop-filter: blur(4px); }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+    <div id="app" class="min-h-screen">
+        <header class="bg-white shadow-md sticky top-0 z-10">
+             <nav class="container mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex items-center justify-between h-16">
+                    <div class="flex items-center space-x-8">
+                        <a href="/" class="text-2xl font-bold text-[#0077b6]">Mathlan<span class="text-[#023e8a]"></span></a>
+                        <!-- Navegación principal para usuarios logueados -->
+                        <div class="hidden md:flex items-baseline space-x-6">
+                            <a href="/dashboard_estudiante.html" class="font-semibold text-gray-800 hover:text-[#0077b6]">Mi Dashboard</a>
+                            <a href="/foro.html" class="font-semibold text-gray-600 hover:text-[#0077b6]">Foro Comunitario</a>
+                        </div>
+                    </div>
+                    <div class="flex items-center">
+                        <button id="logout-button" class="text-sm font-semibold text-red-600 hover:text-red-800">Cerrar Sesión</button>
+                    </div>
+                </div>
+            </nav>
+        </header>
+
+        <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            <!-- Navegación secundaria (dentro del dashboard) -->
+            <div class="border-b border-gray-200 mb-6">
+                <nav class="-mb-px flex space-x-6" id="dashboard-tabs">
+                    <a href="#" data-view="dashboard" class="nav-link active">Resumen</a>
+                    <a href="#" data-view="new-question" class="nav-link">Nueva Consulta</a>
+                    <a href="#" data-view="my-questions" class="nav-link">Mis Consultas</a>
+                </nav>
+            </div>
+            
+            <!-- Vistas del Dashboard -->
+            <div id="dashboard-view" class="view">
+                <h1 class="text-3xl font-bold tracking-tight text-gray-900 mb-6">Panel de Estudiante</h1>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-800">Total de Consultas</h3><p id="total-questions" class="text-4xl font-bold text-[#0077b6] mt-2">0</p></div>
+                    <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-800">Consultas Resueltas</h3><p id="answered-questions" class="text-4xl font-bold text-green-600 mt-2">0</p></div>
+                    <div class="bg-white p-6 rounded-lg shadow"><h3 class="text-lg font-semibold text-gray-800">Llamadas Solicitadas</h3><p id="calls-scheduled" class="text-4xl font-bold text-blue-600 mt-2">0</p></div>
+                </div>
+                <div class="bg-white p-8 rounded-lg shadow-md text-center">
+                    <h2 class="text-2xl font-bold text-gray-900">¿Tienes una duda en tus estudios?</h2>
+                    <p class="mt-2 text-gray-600 max-w-2xl mx-auto">No te quedes atascado. Publica tu pregunta y recibe ayuda de nuestros tutores expertos en ciencias exactas.</p>
+                    <button id="ask-now-btn" class="mt-6 inline-block rounded-lg btn-primary px-6 py-3 font-bold text-white">Hacer una Consulta Ahora</button>
+                </div>
+            </div>
+            <div id="new-question-view" class="view hidden">
+                <h1 class="text-3xl font-bold tracking-tight text-gray-900 mb-6">Hacer una Nueva Consulta</h1>
+                <div class="bg-white p-8 rounded-lg shadow max-w-3xl mx-auto">
+                    <div id="form-message" class="hidden p-4 rounded-md text-sm mb-4"></div>
+                    <form id="question-form"><div class="space-y-6"><div><label for="subject" class="block text-sm font-medium text-gray-900">Materia</label><select id="subject" name="subject" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300"><option>Cálculo Diferencial</option><option>Álgebra Lineal</option><option>Física Mecánica</option><option>Química General</option><option>Programación</option></select></div><div><label for="title" class="block text-sm font-medium text-gray-900">Título de la consulta</label><input type="text" name="title" id="title" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300" placeholder="Ej: ¿Cómo resolver una integral por partes?"></div><div><label for="description" class="block text-sm font-medium text-gray-900">Describe tu duda</label><textarea id="description" name="description" rows="6" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300" placeholder="Adjunta el problema completo..."></textarea></div><div class="flex items-center"><input id="request-call" name="request-call" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-[#0077b6]"><label for="request-call" class="ml-3 block text-sm font-medium text-gray-900">Quiero solicitar una videollamada</label></div></div><div class="mt-8"><button type="submit" class="w-full rounded-md btn-primary px-4 py-3 font-semibold text-white shadow-sm">Enviar Consulta</button></div></form>
+                </div>
+            </div>
+            <div id="my-questions-view" class="view hidden">
+                <h1 class="text-3xl font-bold tracking-tight text-gray-900 mb-6">Mis Consultas</h1>
+                <div id="questions-list" class="space-y-6"></div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal para mostrar el Informe de Sesión -->
+    <div id="report-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 modal-backdrop flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full">
+            <div class="p-6 border-b flex justify-between items-center">
+                <h2 class="text-xl font-bold">Informe de la Sesión</h2>
+                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <div id="report-content" class="p-6 md:p-8 space-y-6"></div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('jwtToken');
+            if (!token) { window.location.href = '/login.html'; return; }
+            const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+            
+            const views = document.querySelectorAll('.view');
+            const navLinks = document.querySelectorAll('#dashboard-tabs a');
+            const questionsListContainer = document.getElementById('questions-list');
+            const questionForm = document.getElementById('question-form');
+            const formMessage = document.getElementById('form-message');
+            const reportModal = document.getElementById('report-modal');
+            const reportContent = document.getElementById('report-content');
+            const closeModalBtn = document.getElementById('close-modal-btn');
+
+            const navigateTo = (viewId) => {
+                views.forEach(v => v.classList.add('hidden'));
+                document.getElementById(`${viewId}-view`).classList.remove('hidden');
+                navLinks.forEach(l => l.classList.toggle('active', l.dataset.view === viewId));
+            };
+            navLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); navigateTo(e.currentTarget.dataset.view); }));
+            document.getElementById('ask-now-btn').addEventListener('click', () => navigateTo('new-question'));
+            document.getElementById('logout-button').addEventListener('click', () => { localStorage.removeItem('jwtToken'); window.location.href = '/'; });
+            
+            closeModalBtn.addEventListener('click', () => reportModal.classList.add('hidden'));
+            reportModal.addEventListener('click', (e) => { if (e.target === reportModal) { reportModal.classList.add('hidden'); } });
+
+            const renderQuestions = (questions) => {
+                questionsListContainer.innerHTML = '';
+                if (!questions || questions.length === 0) {
+                    questionsListContainer.innerHTML = '<div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">Aún no has hecho ninguna consulta.</div>';
+                } else {
+                    questions.forEach(q => {
+                        let statusBadge = '';
+                        let actionButton = '';
+
+                        if (q.estado === 'Llamada en curso') {
+                            statusBadge = `<span class="status-badge bg-blue-100 text-blue-800">${q.estado}</span>`;
+                            actionButton = `<a href="/llamada.html?sala=${q.salaLlamada}&consultaId=${q.id}" class="btn-primary py-2 px-4 rounded-lg text-sm">Unirse a la Llamada</a>`;
+                        } else if (q.estado === 'Respondida') {
+                            statusBadge = `<span class="status-badge bg-green-100 text-green-800">${q.estado}</span>`;
+                            actionButton = `<button data-consulta-id="${q.id}" class="view-report-btn btn-secondary py-2 px-4 rounded-lg text-sm">Ver Informe</button>`;
+                        } else {
+                            statusBadge = `<span class="status-badge bg-yellow-100 text-yellow-800">${q.estado}</span>`;
+                        }
+                        
+                        const card = `<div class="bg-white p-6 rounded-lg shadow"><div class="flex justify-between items-start flex-wrap gap-2"><div><p class="text-sm font-semibold text-gray-500">${q.materia}</p><h3 class="text-lg font-semibold text-gray-800 mt-1">${q.titulo}</h3></div><div class="flex items-center gap-3 flex-shrink-0">${statusBadge}${actionButton}</div></div></div>`;
+                        questionsListContainer.innerHTML += card;
+                    });
+                }
+                updateStats(questions || []);
+            };
+            
+            const updateStats = (questions) => {
+                document.getElementById('total-questions').textContent = questions.length;
+                document.getElementById('answered-questions').textContent = questions.filter(q => q.estado === 'Respondida').length;
+                document.getElementById('calls-scheduled').textContent = questions.filter(q => q.solicitaLlamada === 'S').length;
+            };
+
+            const fetchConsultas = async () => {
+                try {
+                    const response = await fetch('/api/consultas', { headers });
+                    if (response.status === 403) { localStorage.removeItem('jwtToken'); window.location.href = '/login.html'; return; }
+                    if (!response.ok) throw new Error('Error al cargar las consultas.');
+                    const questions = await response.json();
+                    renderQuestions(questions);
+                } catch (error) {
+                    console.error("Error en fetchConsultas:", error);
+                    questionsListContainer.innerHTML = '<p class="text-red-500">No se pudieron cargar tus consultas.</p>';
+                }
+            };
+            
+            questionForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = {materia: document.getElementById('subject').value, titulo: document.getElementById('title').value, descripcion: document.getElementById('description').value, solicitaLlamada: document.getElementById('request-call').checked};
+                try {
+                    const response = await fetch('/api/consultas', { method: 'POST', headers, body: JSON.stringify(formData) });
+                    if (!response.ok) throw new Error('Hubo un error al crear la consulta.');
+                    formMessage.textContent = '¡Consulta enviada con éxito!';
+                    formMessage.className = 'p-4 rounded-md text-sm mb-4 bg-green-100 text-green-800';
+                    formMessage.classList.remove('hidden');
+                    questionForm.reset();
+                    setTimeout(() => { formMessage.classList.add('hidden'); fetchConsultas(); navigateTo('my-questions'); }, 1500);
+                } catch (error) {
+                    formMessage.textContent = error.message;
+                    formMessage.className = 'p-4 rounded-md text-sm mb-4 bg-red-100 text-red-800';
+                    formMessage.classList.remove('hidden');
+                }
+            });
+
+            questionsListContainer.addEventListener('click', async (e) => {
+                if (e.target.classList.contains('view-report-btn')) {
+                    const consultaId = e.target.dataset.consultaId;
+                    reportContent.innerHTML = '<p>Cargando informe...</p>';
+                    reportModal.classList.remove('hidden');
+                    try {
+                        const response = await fetch(`/api/consultas/${consultaId}/informe`, { headers });
+                        if (!response.ok) { throw new Error('Informe no encontrado o aún no disponible.'); }
+                        const informe = await response.json();
+                        reportContent.innerHTML = `<div><h3 class="font-semibold text-gray-800">Puntos Fuertes</h3><p class="mt-2 text-gray-600 bg-gray-50 p-3 rounded-md">${informe.puntosFuertes}</p></div><div><h3 class="font-semibold text-gray-800">Áreas a Mejorar</h3><p class="mt-2 text-gray-600 bg-gray-50 p-3 rounded-md">${informe.areasAMejorar}</p></div><div><h3 class="font-semibold text-gray-800">Recomendaciones</h3><p class="mt-2 text-gray-600 bg-gray-50 p-3 rounded-md">${informe.recomendaciones || 'Sin recomendaciones.'}</p></div>`;
+                    } catch (error) {
+                        reportContent.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+                    }
+                }
+            });
+
+            fetchConsultas();
+        });
+    </script>
+</body>
+</html>
+

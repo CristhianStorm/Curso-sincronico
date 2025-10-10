@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathlan - Tu Aliado en Ciencias Exactas</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f8f7f4; scroll-behavior: smooth; }
+        .pricing-card { border: 2px solid #e5e7eb; transition: all 0.3s ease; }
+        .pricing-card:hover { transform: translateY(-8px); box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1); }
+        .popular-card { border-color: #0077b6; }
+        .btn-select { background-color: #0077b6; color: white; transition: background-color 0.3s ease; }
+        .btn-select:hover { background-color: #023e8a; }
+        .btn-secondary { background-color: white; color: #0077b6; border: 2px solid #0077b6; }
+        .btn-secondary:hover { background-color: #eef8ff; }
+        .feature-item::before { content: '✓'; color: #16a34a; font-weight: bold; margin-right: 0.75rem; flex-shrink: 0; }
+        .feature-icon { background-color: #e0e7ff; color: #3730a3; width: 64px; height: 64px; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+
+    <header class="bg-white/80 backdrop-blur-md sticky top-0 z-20">
+         <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+             <div class="text-2xl font-bold text-[#0077b6]">Mathlan<span class="text-[#023e8a]"></span></div>
+             <!-- NAVEGACIÓN ACTUALIZADA CON ENLACE AL FORO -->
+             <div class="space-x-6">
+                 <a href="#plans" class="font-semibold text-gray-600 hover:text-[#0077b6]">Planes</a>
+                 <a href="/foro.html" class="font-semibold text-gray-600 hover:text-[#0077b6]">Foro</a>
+                 <a href="/login.html" class="font-semibold text-gray-600 hover:text-[#0077b6]">Iniciar Sesión</a>
+             </div>
+         </nav>
+    </header>
+
+    <main>
+        <!-- Sección Principal -->
+        <section class="container mx-auto px-6 py-20 text-center">
+            <h1 class="text-4xl md:text-6xl font-extrabold text-gray-900 leading-tight">La Ayuda Experta que Necesitas en Ciencias Exactas.</h1>
+            <p class="mt-4 max-w-3xl mx-auto text-lg text-gray-600">Desde una simple duda hasta una videollamada personalizada. Supera cualquier obstáculo en tus estudios con tutores dedicados.</p>
+            <a href="#plans" class="mt-8 inline-block rounded-lg btn-select px-8 py-4 font-bold text-white transition">Ver Planes de Suscripción</a>
+        </section>
+
+        <!-- Sección de Planes -->
+        <section id="plans" class="py-20 bg-white">
+            <div class="container mx-auto px-6">
+                <h2 class="text-3xl font-bold text-center mb-12">Elige el Plan Perfecto Para Ti</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 max-w-5xl mx-auto">
+                    <!-- Plan Básico -->
+                    <div class="pricing-card bg-gray-50 rounded-xl p-8 flex flex-col">
+                        <h3 class="text-xl font-semibold">Básico</h3>
+                        <p class="mt-2 text-gray-500">Para dudas puntuales.</p>
+                        <p class="mt-6 text-4xl font-bold">$15 <span class="text-lg font-medium text-gray-500">/mes</span></p>
+                        <a href="/registro.html" class="mt-8 w-full text-center py-3 font-semibold rounded-lg btn-secondary">Seleccionar Plan</a>
+                        <ul class="mt-8 space-y-4 text-gray-700 flex-grow"><li class="flex items-start feature-item">Hasta 10 consultas por mes</li><li class="flex items-start feature-item">Respuestas por texto</li><li class="flex items-start feature-item">Soporte por email</li></ul>
+                    </div>
+                    <!-- Plan Plus -->
+                    <div class="pricing-card popular-card bg-white rounded-xl p-8 flex flex-col relative">
+                        <div class="absolute top-0 -translate-y-1/2 left-1/2 -translate-x-1/2"><span class="bg-[#0077b6] text-white px-4 py-1 rounded-full text-sm font-semibold">MÁS POPULAR</span></div>
+                        <h3 class="text-xl font-semibold">Plus</h3>
+                        <p class="mt-2 text-gray-500">El mejor balance.</p>
+                        <p class="mt-6 text-4xl font-bold">$40 <span class="text-lg font-medium text-gray-500">/trimestre</span></p>
+                        <a href="/registro.html" class="mt-8 w-full text-center py-3 font-semibold rounded-lg btn-select">Seleccionar Plan</a>
+                        <ul class="mt-8 space-y-4 text-gray-700 flex-grow"><li class="flex items-start feature-item">Consultas ilimitadas</li><li class="flex items-start feature-item">Respuestas por texto</li><li class="flex items-start feature-item">Hasta 5 videollamadas por mes</li><li class="flex items-start feature-item">Soporte prioritario</li></ul>
+                    </div>
+                    <!-- Plan Premium -->
+                    <div class="pricing-card bg-gray-50 rounded-xl p-8 flex flex-col">
+                        <h3 class="text-xl font-semibold">Premium</h3>
+                        <p class="mt-2 text-gray-500">Acceso total y sin límites.</p>
+                        <p class="mt-6 text-4xl font-bold">$70 <span class="text-lg font-medium text-gray-500">/semestre</span></p>
+                        <a href="/registro.html" class="mt-8 w-full text-center py-3 font-semibold rounded-lg btn-secondary">Seleccionar Plan</a>
+                        <ul class="mt-8 space-y-4 text-gray-700 flex-grow"><li class="flex items-start feature-item">Consultas ilimitadas</li><li class="flex items-start feature-item">Respuestas por texto</li><li class="flex items-start feature-item">Videollamadas ilimitadas</li><li class="flex items-start feature-item">Acceso a material exclusivo</li></ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <!-- Sección de Características -->
+        <section id="features" class="py-20">
+            <div class="container mx-auto px-6">
+                <div class="text-center"><h2 class="text-3xl font-bold">Todo lo que necesitas para triunfar</h2><p class="mt-3 max-w-2xl mx-auto text-gray-600">Nuestra plataforma está diseñada para ofrecerte una experiencia de aprendizaje completa y personalizada.</p></div>
+                <div class="mt-16 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-12">
+                    <div class="text-center"><div class="feature-icon mx-auto"><span>💬</span></div><h3 class="mt-4 text-xl font-semibold">Consultas Claras y Precisas</h3><p class="mt-2 text-gray-600">Sube tus preguntas en cualquier momento. Nuestros docentes te darán respuestas detalladas y fáciles de entender.</p></div>
+                    <div class="text-center"><div class="feature-icon mx-auto"><span>💻</span></div><h3 class="mt-4 text-xl font-semibold">Videollamadas Personales</h3><p class="mt-2 text-gray-600">¿La duda persiste? Agenda una videollamada uno a uno y resuelve tus preguntas en tiempo real con un experto.</p></div>
+                    <div class="text-center"><div class="feature-icon mx-auto"><span>📈</span></div><h3 class="mt-4 text-xl font-semibold">Informes de Progreso</h3><p class="mt-2 text-gray-600">Después de cada llamada, recibe un informe con tus fortalezas, áreas de mejora y recomendaciones para seguir practicando.</p></div>
+                    <div class="text-center"><div class="feature-icon mx-auto"><span>🔬</span></div><h3 class="mt-4 text-xl font-semibold">Expertos en Ciencias Exactas</h3><p class="mt-2 text-gray-600">Todos nuestros tutores son profesionales y docentes con amplia experiencia en Cálculo, Física, Álgebra, Química y más.</p></div>
+                    <div class="text-center"><div class="feature-icon mx-auto"><span>👨‍👩‍👧</span></div><h3 class="mt-4 text-xl font-semibold">Comunicación con Tutores</h3><p class="mt-2 text-gray-600">Si el estudiante es menor de edad, mantenemos a sus tutores informados con copias de los informes de progreso por correo electrónico.</p></div>
+                    <div class="text-center"><div class="feature-icon mx-auto"><span>🧠</span></div><h3 class="mt-4 text-xl font-semibold">Aprende a tu Ritmo</h3><p class="mt-2 text-gray-600">Accede a tus consultas pasadas y a los informes en cualquier momento para repasar y consolidar tu aprendizaje.</p></div>
+                </div>
+            </div>
+        </section>
+    </main>
+    
+    <footer class="bg-white border-t mt-10">
+        <div class="container mx-auto px-6 py-6 text-center text-gray-500 text-sm">&copy; 2025 Mathlan. Todos los derechos reservados.</div>
+    </footer>
+</body>
+</html>
+

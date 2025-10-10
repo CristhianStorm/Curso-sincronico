@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathlan - Panel de Administración</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- SECCIÓN DE ESTILOS CORREGIDA -->
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f1f5f9; }
+        .sidebar-link { display: flex; align-items: center; padding: 0.75rem 1rem; border-radius: 0.5rem; transition: all 0.2s; cursor: pointer; }
+        .sidebar-link:hover { background-color: #e0e7ff; }
+        .sidebar-link.active { background-color: #0077b6; color: white; font-weight: 600; }
+        .stat-card { background-color: white; border-radius: 0.75rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); }
+        .table-header { background-color: #f8fafc; }
+        .btn-primary { 
+            background-color: #0077b6; 
+            color: white; 
+            transition: background-color 0.3s ease; /* Línea Corregida */
+        }
+        .btn-primary:hover { 
+            background-color: #023e8a; 
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-900">
+    <div class="flex h-screen bg-gray-100">
+        <!-- Barra Lateral de Navegación -->
+        <aside class="w-64 flex-shrink-0 bg-white border-r border-gray-200 flex flex-col">
+            <div class="p-6 text-2xl font-bold text-[#0077b6]">Mathlan<span class="text-[#023e8a]"></span> Admin</div>
+            <nav class="p-4 space-y-2 flex-grow">
+                <a data-view="dashboard" class="sidebar-link active"><span class="mr-3 w-6 text-center">📊</span> Dashboard</a>
+                <a data-view="pagos" class="sidebar-link relative"><span class="mr-3 w-6 text-center">💳</span> Validación de Pagos<span id="pending-payments-badge" class="ml-auto h-5 w-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">0</span></a>
+                <a data-view="usuarios" class="sidebar-link"><span class="mr-3 w-6 text-center">👥</span> Gestión de Usuarios</a>
+                <a data-view="crear-usuario" class="sidebar-link"><span class="mr-3 w-6 text-center">➕</span> Crear Usuario</a>
+                <a data-view="analiticas" class="sidebar-link"><span class="mr-3 w-6 text-center">📈</span> Analíticas</a>
+            </nav>
+            <div class="p-4 border-t"><button id="logout-button" class="w-full text-left text-sm font-semibold text-red-600 hover:text-red-800 p-2 rounded-md hover:bg-red-50 transition">Cerrar Sesión</button></div>
+        </aside>
+
+        <!-- Contenido Principal -->
+        <main class="flex-1 overflow-y-auto p-8">
+            <div id="dashboard-view" class="view">
+                <h1 class="text-3xl font-bold mb-6">Dashboard General</h1>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div class="stat-card p-6"><h3 class="text-sm font-medium text-gray-500">Usuarios Totales</h3><p id="stat-total-users" class="text-3xl font-bold mt-2">0</p></div>
+                    <div class="stat-card p-6"><h3 class="text-sm font-medium text-gray-500">Estudiantes Activos</h3><p id="stat-active-students" class="text-3xl font-bold mt-2">0</p></div>
+                    <div class="stat-card p-6"><h3 class="text-sm font-medium text-gray-500">Docentes Activos</h3><p id="stat-active-teachers" class="text-3xl font-bold mt-2">0</p></div>
+                    <div class="stat-card p-6"><h3 class="text-sm font-medium text-gray-500">Pagos Pendientes</h3><p id="stat-pending-payments" class="text-3xl font-bold mt-2">0</p></div>
+                </div>
+            </div>
+            <div id="pagos-view" class="view hidden">
+                <h1 class="text-3xl font-bold mb-6">Pagos Pendientes por Validar</h1>
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase table-header"><tr><th class="px-6 py-3">Nombre</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Estado</th><th class="px-6 py-3">Acciones</th></tr></thead><tbody id="pending-table-body"></tbody></table>
+                </div>
+            </div>
+            <div id="usuarios-view" class="view hidden">
+                <h1 class="text-3xl font-bold mb-6">Gestión de Todos los Usuarios</h1>
+                <div class="bg-white rounded-lg shadow-sm overflow-hidden">
+                    <table class="w-full text-sm text-left"><thead class="text-xs text-gray-700 uppercase table-header"><tr><th class="px-6 py-3">Nombre</th><th class="px-6 py-3">Email</th><th class="px-6 py-3">Rol</th><th class="px-6 py-3">Estado</th></tr></thead><tbody id="all-users-table-body"></tbody></table>
+                </div>
+            </div>
+            <div id="crear-usuario-view" class="view hidden">
+                <h1 class="text-3xl font-bold mb-6">Crear Nuevo Usuario (Docente o Admin)</h1>
+                <div class="bg-white p-8 rounded-lg shadow max-w-2xl mx-auto">
+                    <div id="form-message" class="hidden p-4 rounded-md text-sm mb-6"></div>
+                    <form id="create-user-form" class="space-y-6">
+                        <div><label for="nombreCompleto" class="block text-sm font-medium">Nombre Completo</label><input type="text" id="nombreCompleto" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                        <div><label for="email" class="block text-sm font-medium">Correo Electrónico</label><input type="email" id="email" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                        <div><label for="password" class="block text-sm font-medium">Contraseña (mínimo 8 caracteres)</label><input type="password" id="password" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></div>
+                        <div><label for="rol" class="block text-sm font-medium">Rol</label><select id="rol" required class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"><option value="docente">Docente</option><option value="administrador">Administrador</option></select></div>
+                        <div class="flex justify-end"><button type="submit" class="btn-primary font-bold py-2 px-6 rounded-lg">Crear Usuario</button></div>
+                    </form>
+                </div>
+            </div>
+            <div id="analiticas-view" class="view hidden">
+                <h1 class="text-3xl font-bold mb-6">Analíticas de la Plataforma</h1>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-white p-6 rounded-lg shadow-sm"><h3 class="font-semibold mb-4">Consultas por Materia</h3><div style="position: relative; height:40vh; width:100%"><canvas id="subjectsChart"></canvas></div></div>
+                    <div class="bg-white p-6 rounded-lg shadow-sm"><h3 class="font-semibold mb-4">Usuarios Registrados por Día</h3><div style="position: relative; height:40vh; width:100%"><canvas id="activityChart"></canvas></div></div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const token = localStorage.getItem('jwtToken');
+        if (!token) { window.location.href = '/login.html'; return; }
+        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+
+        const sidebarLinks = document.querySelectorAll('.sidebar-link');
+        const views = document.querySelectorAll('.view');
+        const pendingTableBody = document.getElementById('pending-table-body');
+        const allUsersTableBody = document.getElementById('all-users-table-body');
+        const pendingBadge = document.getElementById('pending-payments-badge');
+        const logoutButton = document.getElementById('logout-button');
+        const createUserForm = document.getElementById('create-user-form');
+        const formMessage = document.getElementById('form-message');
+        let subjectsChart, activityChart;
+
+        const navigateTo = (viewId) => {
+            views.forEach(v => v.classList.add('hidden'));
+            document.getElementById(`${viewId}-view`).classList.remove('hidden');
+            sidebarLinks.forEach(l => l.classList.toggle('active', l.dataset.view === viewId));
+            if (viewId === 'analiticas' && window.chartData) { renderCharts(); }
+        };
+
+        const fetchData = async () => {
+            try {
+                const [pendingRes, allUsersRes, consultasRes] = await Promise.all([
+                    fetch('/api/admin/pagos-pendientes', { headers }),
+                    fetch('/api/admin/users', { headers }),
+                    fetch('/api/docente/consultas', { headers })
+                ]);
+                if (pendingRes.status === 403) throw new Error("Acceso denegado.");
+                
+                const pendingUsers = await pendingRes.json();
+                const allUsers = await allUsersRes.json();
+                const allConsultas = await consultasRes.json();
+                
+                renderPending(pendingUsers);
+                renderAllUsers(allUsers);
+                updateStats(allUsers, pendingUsers);
+                window.chartData = { users: allUsers, consultas: allConsultas };
+            } catch (error) {
+                document.querySelector('main').innerHTML = `<div class="bg-white p-8 rounded-lg shadow text-center text-red-600">${error.message}</div>`;
+            }
+        };
+
+        const renderPending = (users) => {
+            pendingTableBody.innerHTML = '';
+            if(users.length === 0) {
+                pendingTableBody.innerHTML = `<tr><td colspan="4" class="text-center p-4 text-gray-500">No hay pagos pendientes.</td></tr>`;
+            } else {
+                users.forEach(user => {
+                    const row = `<tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${user.nombreCompleto}</td><td class="px-6 py-4">${user.email}</td><td class="px-6 py-4 font-semibold text-yellow-600">${user.estado.replace('_', ' ')}</td><td class="px-6 py-4"><button data-id="${user.id}" class="activate-btn font-medium text-blue-600 hover:underline">Activar</button></td></tr>`;
+                    pendingTableBody.innerHTML += row;
+                });
+            }
+        };
+        
+        const renderAllUsers = (users) => {
+            allUsersTableBody.innerHTML = '';
+             users.forEach(user => {
+                const statusColor = user.estado === 'activo' ? 'text-green-600' : 'text-yellow-600';
+                const row = `<tr class="bg-white border-b"><td class="px-6 py-4 font-medium">${user.nombreCompleto}</td><td class="px-6 py-4">${user.email}</td><td class="px-6 py-4 capitalize">${user.rol}</td><td class="px-6 py-4 font-semibold ${statusColor} capitalize">${user.estado.replace('_', ' ')}</td></tr>`;
+                allUsersTableBody.innerHTML += row;
+            });
+        };
+
+        const updateStats = (allUsers, pendingUsers) => {
+            document.getElementById('stat-total-users').textContent = allUsers.length;
+            document.getElementById('stat-active-students').textContent = allUsers.filter(u => u.rol === 'estudiante' && u.estado === 'activo').length;
+            document.getElementById('stat-active-teachers').textContent = allUsers.filter(u => u.rol === 'docente' && u.estado === 'activo').length;
+            document.getElementById('stat-pending-payments').textContent = pendingUsers.length;
+            pendingBadge.textContent = pendingUsers.length;
+            pendingBadge.classList.toggle('hidden', pendingUsers.length === 0);
+        };
+        
+        const renderCharts = () => {
+            const { consultas } = window.chartData;
+            const subjectCounts = consultas.reduce((acc, c) => ({...acc, [c.materia]:(acc[c.materia]||0)+1}), {});
+            if (subjectsChart) subjectsChart.destroy();
+            subjectsChart = new Chart(document.getElementById('subjectsChart').getContext('2d'), { type: 'doughnut', data: { labels: Object.keys(subjectCounts), datasets: [{ data: Object.values(subjectCounts), backgroundColor: ['#3b82f6', '#16a34a', '#ef4444', '#f59e0b', '#8b5cf6'] }] }, options: { responsive: true, maintainAspectRatio: false }});
+            if (activityChart) activityChart.destroy();
+            activityChart = new Chart(document.getElementById('activityChart').getContext('2d'), { type: 'line', data: { labels: ['Hace 7 días', 'Hace 5 días', 'Hace 3 días', 'Ayer', 'Hoy'], datasets: [{ label: 'Nuevos Usuarios', data: [2, 5, 3, 8, 4], borderColor: '#0077b6', tension: 0.1, fill: false }] }, options: { responsive: true, maintainAspectRatio: false }});
+        };
+
+        sidebarLinks.forEach(link => link.addEventListener('click', (e) => navigateTo(e.currentTarget.dataset.view)));
+
+        pendingTableBody.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('activate-btn')) {
+                const userId = e.target.dataset.id;
+                try {
+                    const response = await fetch(`/api/admin/users/${userId}/activate`, { method: 'PUT', headers });
+                    if (!response.ok) throw new Error('No se pudo activar el usuario.');
+                    await fetchData();
+                } catch (error) { alert(error.message); }
+            }
+        });
+
+        logoutButton.addEventListener('click', () => {
+            localStorage.removeItem('jwtToken');
+            window.location.href = '/';
+        });
+
+        createUserForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            formMessage.classList.add('hidden');
+            const formData = {
+                nombreCompleto: document.getElementById('nombreCompleto').value,
+                email: document.getElementById('email').value,
+                password: document.getElementById('password').value,
+                rol: document.getElementById('rol').value,
+            };
+            try {
+                const response = await fetch('/api/admin/users', { method: 'POST', headers, body: JSON.stringify(formData) });
+                const responseData = await response.text();
+                if (!response.ok) throw new Error(responseData);
+                
+                formMessage.className = 'p-4 rounded-md text-sm mb-6 bg-green-100 text-green-800';
+                formMessage.textContent = '¡Usuario creado exitosamente!';
+                createUserForm.reset();
+                await fetchData();
+            } catch (error) {
+                formMessage.className = 'p-4 rounded-md text-sm mb-6 bg-red-100 text-red-800';
+                formMessage.textContent = error.message;
+            } finally {
+                formMessage.classList.remove('hidden');
+            }
+        });
+
+        await fetchData();
+    });
+    </script>
+</body>
+</html>
+

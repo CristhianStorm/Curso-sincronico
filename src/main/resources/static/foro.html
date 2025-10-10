@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathlan - Foro Comunitario</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8f7f4; 
+        }
+        .thread-card:hover { 
+            background-color: #ffffff; 
+            box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05); 
+        }
+        .category-tag { 
+            font-size: 0.75rem; 
+            font-weight: 600; 
+            padding: 0.25rem 0.75rem; 
+            border-radius: 9999px; 
+        }
+        .tag-matematica { background-color: #dbeafe; color: #1e40af; }
+        .tag-fisica { background-color: #d1fae5; color: #065f46; }
+        .tag-quimica { background-color: #fef3c7; color: #92400e; }
+        .tag-programacion { background-color: #e0e7ff; color: #3730a3; }
+        .teacher-reply { 
+            background-color: #eef8ff; 
+            border-left: 4px solid #0077b6; 
+        }
+        .btn-primary { 
+            background-color: #0077b6; 
+            color: white; 
+            transition: background-color 0.3s ease; 
+        }
+        .btn-primary:hover { 
+            background-color: #023e8a; 
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+    <header class="bg-white shadow-sm sticky top-0 z-10">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+             <a href="/" class="text-2xl font-bold text-[#0077b6]">Mathlan<span class="text-[#023e8a]"></span></a>
+             <div class="flex items-center space-x-4" id="nav-links">
+                <!-- Los enlaces se añadirán dinámicamente con JavaScript -->
+             </div>
+        </nav>
+    </header>
+
+    <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <!-- Vista de Lista de Hilos -->
+        <div id="hilos-list-view">
+            <div class="flex flex-col md:flex-row justify-between md:items-center mb-8 gap-4">
+                <div>
+                    <h1 class="text-3xl font-bold tracking-tight text-gray-900">Foro Comunitario</h1>
+                    <p class="text-gray-600 mt-1">Discute y resuelve dudas con otros estudiantes.</p>
+                </div>
+                <a href="/crear_hilo.html" id="new-thread-link" class="btn-primary font-bold py-2 px-5 rounded-lg text-center">Iniciar una Nueva Discusión</a>
+            </div>
+            <div id="hilos-container" class="space-y-4">
+                <p>Cargando discusiones...</p>
+            </div>
+        </div>
+
+        <!-- Vista de un Hilo Específico -->
+        <div id="thread-detail-view" class="hidden">
+            <div class="mb-6">
+                 <a href="/foro.html" class="text-sm font-semibold text-[#0077b6] hover:underline">&larr; Volver a todas las discusiones</a>
+            </div>
+            <div id="thread-content" class="bg-white p-6 rounded-lg shadow-md"></div>
+            <div id="thread-replies" class="mt-6 space-y-5"></div>
+            <div id="reply-form-container" class="mt-8"></div>
+        </div>
+    </main>
+    
+    <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+        const token = localStorage.getItem('jwtToken');
+        const headers = token ? { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' } : { 'Content-Type': 'application/json' };
+
+        const hilosListView = document.getElementById('hilos-list-view');
+        const threadDetailView = document.getElementById('thread-detail-view');
+        const hilosContainer = document.getElementById('hilos-container');
+        const threadContent = document.getElementById('thread-content');
+        const threadReplies = document.getElementById('thread-replies');
+        const replyFormContainer = document.getElementById('reply-form-container');
+        const newThreadLink = document.getElementById('new-thread-link');
+        const navLinks = document.getElementById('nav-links');
+
+        // --- Lógica de Navegación Dinámica ---
+        if (token) {
+            navLinks.innerHTML = `<a href="/dashboard_estudiante.html" class="font-semibold text-gray-600 hover:text-[#0077b6]">Mi Dashboard</a><a href="/foro.html" class="font-semibold text-[#0077b6] border-b-2 border-[#0077b6]">Foro</a>`;
+        } else {
+            navLinks.innerHTML = `<a href="/foro.html" class="font-semibold text-[#0077b6] border-b-2 border-[#0077b6]">Foro</a><a href="/login.html" class="font-semibold text-gray-600 hover:text-[#0077b6]">Iniciar Sesión</a>`;
+        }
+
+        // Si el usuario no está logueado, evitamos que vaya a crear un hilo y lo mandamos a iniciar sesión.
+        if (!token) {
+            newThreadLink.addEventListener('click', (e) => {
+                e.preventDefault();
+                localStorage.setItem('redirectAfterLogin', e.currentTarget.href);
+                window.location.href = '/login.html';
+            });
+        }
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const hiloId = urlParams.get('hiloId');
+
+        // Decide qué vista mostrar (lista de hilos o detalle de un hilo)
+        if (hiloId) {
+            hilosListView.classList.add('hidden');
+            threadDetailView.classList.remove('hidden');
+            await loadThreadDetails(hiloId);
+        } else {
+            hilosListView.classList.remove('hidden');
+            threadDetailView.classList.add('hidden');
+            await loadAllHilos();
+        }
+
+        // --- Funciones de Carga de Datos ---
+
+        async function loadAllHilos() {
+            try {
+                const response = await fetch('/api/foro/hilos');
+                if (!response.ok) throw new Error('No se pudieron cargar las discusiones.');
+                const hilos = await response.json();
+                hilosContainer.innerHTML = '';
+                if(hilos.length === 0) {
+                    hilosContainer.innerHTML = '<p class="text-gray-500">Aún no hay discusiones en el foro. ¡Sé el primero en empezar una!</p>';
+                    return;
+                }
+                hilos.forEach(hilo => {
+                    const tagClass = `tag-${hilo.categoria.toLowerCase()}`;
+                    const card = `<a href="/foro.html?hiloId=${hilo.id}" class="thread-card block bg-white p-4 rounded-lg border transition"><span class="category-tag ${tagClass}">${hilo.categoria}</span><h3 class="text-lg font-semibold text-gray-800 mt-1">${hilo.titulo}</h3></a>`;
+                    hilosContainer.innerHTML += card;
+                });
+            } catch(error) {
+                hilosContainer.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+            }
+        }
+
+        async function loadThreadDetails(id) {
+            try {
+                const response = await fetch(`/api/foro/hilos/${id}`);
+                if (!response.ok) throw new Error('No se pudo cargar el detalle de la discusión.');
+                const data = await response.json();
+                
+                const tagClass = `tag-${data.hilo.categoria.toLowerCase()}`;
+                threadContent.innerHTML = `<div class="border-b pb-4"><span class="category-tag ${tagClass}">${data.hilo.categoria}</span><h2 class="text-xl font-bold mt-3">${data.hilo.titulo}</h2><p class="text-sm text-gray-600 mt-1">Publicado por: <span class="font-medium">${data.nombreAutor}</span></p><p class="mt-4 text-gray-700">${data.hilo.contenido}</p></div>`;
+                
+                threadReplies.innerHTML = `<h3 class="font-semibold">${data.respuestas.length} Respuestas</h3>`;
+                data.respuestas.forEach(res => {
+                    const isTeacher = res.rolUsuario === 'docente';
+                    const replyClass = isTeacher ? 'teacher-reply p-4 rounded-lg' : 'flex gap-4';
+                    const authorTag = isTeacher ? `<span class="text-xs font-bold text-white bg-[#0077b6] py-0.5 px-2 rounded-full">DOCENTE</span>` : '';
+                    const replyHTML = `<article class="${replyClass}"><div class="w-10 h-10 bg-gray-200 rounded-full flex-shrink-0 flex items-center justify-center font-bold text-gray-600">${res.nombreUsuario.substring(0,2).toUpperCase()}</div><div><div class="flex items-center gap-2"><p class="font-semibold">${res.nombreUsuario}</p>${authorTag}</div><p class="text-gray-700 mt-1">${res.respuesta.contenido}</p></div></article>`;
+                    threadReplies.innerHTML += replyHTML;
+                });
+
+                if (token) {
+                    replyFormContainer.innerHTML = `<form id="reply-form"><h3 class="font-semibold mb-2">Escribe una respuesta</h3><textarea id="reply-content" required rows="4" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="Aporta a la discusión..."></textarea><button type="submit" class="mt-2 btn-primary font-bold py-2 px-5 rounded-lg">Publicar Respuesta</button></form>`;
+                    document.getElementById('reply-form').addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const contenido = document.getElementById('reply-content').value;
+                        await fetch(`/api/foro/hilos/${id}/respuestas`, { method: 'POST', headers, body: JSON.stringify({ contenido }) });
+                        await loadThreadDetails(id); // Recargar
+                    });
+                } else {
+                    replyFormContainer.innerHTML = `<div class="text-center p-4 rounded-lg bg-gray-100"><p>Debes <a href="/login.html" class="login-required font-bold text-[#0077b6]">iniciar sesión</a> para poder responder.</p></div>`;
+                    document.querySelector('.login-required').addEventListener('click', (e) => {
+                        e.preventDefault();
+                        localStorage.setItem('redirectAfterLogin', window.location.href);
+                        window.location.href = e.currentTarget.href;
+                    });
+                }
+            } catch(error) {
+                threadDetailView.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+            }
+        }
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mathlan - Iniciar Discusión</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- SECCIÓN DE ESTILOS CORREGIDA -->
+    <style>
+        body { 
+            font-family: 'Inter', sans-serif; 
+            background-color: #f8f7f4; 
+        }
+        .btn-primary { 
+            background-color: #0077b6; 
+            color: white; 
+            transition: background-color 0.3s ease; /* Línea Corregida */
+        }
+        .btn-primary:hover { 
+            background-color: #023e8a; 
+        }
+    </style>
+</head>
+<body class="antialiased text-gray-800">
+    <header class="bg-white shadow-sm">
+        <nav class="container mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+            <a href="/" class="text-2xl font-bold text-[#0077b6]">Mathlan<span class="text-[#023e8a]"></span></a>
+        </nav>
+    </header>
+    <main class="container mx-auto p-6">
+        <h1 class="text-3xl font-bold mb-6">Iniciar una Nueva Discusión</h1>
+        <div class="bg-white p-8 rounded-lg shadow max-w-3xl mx-auto">
+            <div id="form-message" class="hidden p-4 rounded-md text-sm mb-6"></div>
+            <form id="hilo-form">
+                <div class="space-y-6">
+                    <div>
+                        <label for="categoria" class="block text-sm font-medium text-gray-900">Categoría</label>
+                        <select id="categoria" required class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300">
+                            <option>Matematica</option>
+                            <option>Fisica</option>
+                            <option>Quimica</option>
+                            <option>Programacion</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="titulo" class="block text-sm font-medium text-gray-900">Título de la Discusión</label>
+                        <input type="text" id="titulo" required class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300" placeholder="Escribe un título claro y conciso">
+                    </div>
+                    <div>
+                        <label for="contenido" class="block text-sm font-medium text-gray-900">Contenido</label>
+                        <textarea id="contenido" rows="8" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300" placeholder="Describe tu pregunta o tema de discusión en detalle..."></textarea>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end gap-4">
+                    <a href="/foro.html" class="px-4 py-2 text-sm font-semibold rounded-md">Cancelar</a>
+                    <button type="submit" class="rounded-md btn-primary px-4 py-2 font-semibold text-white shadow-sm">Publicar Hilo</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const token = localStorage.getItem('jwtToken');
+            if (!token) {
+                localStorage.setItem('redirectAfterLogin', window.location.href);
+                window.location.href = '/login.html';
+                return;
+            }
+            
+            const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+            const hiloForm = document.getElementById('hilo-form');
+            const formMessage = document.getElementById('form-message');
+
+            hiloForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const formData = {
+                    categoria: document.getElementById('categoria').value,
+                    titulo: document.getElementById('titulo').value,
+                    contenido: document.getElementById('contenido').value
+                };
+                try {
+                    const response = await fetch('/api/foro/hilos', { method: 'POST', headers, body: JSON.stringify(formData) });
+                    if (!response.ok) throw new Error('No se pudo crear el hilo.');
+                    
+                    formMessage.textContent = '¡Hilo publicado! Redirigiendo al foro...';
+                    formMessage.className = 'p-4 rounded-md text-sm mb-4 bg-green-100 text-green-800';
+                    formMessage.classList.remove('hidden');
+                    
+                    setTimeout(() => window.location.href = '/foro.html', 1500);
+                } catch (error) {
+                    formMessage.textContent = error.message;
+                    formMessage.className = 'p-4 rounded-md text-sm mb-4 bg-red-100 text-red-800';
+                    formMessage.classList.remove('hidden');
+                }
+            });
+        });
+    </script>
+</body>
+</html>
+
