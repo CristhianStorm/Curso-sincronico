@@ -27,7 +27,6 @@
                 <div class="flex items-center justify-between h-16">
                     <div class="flex items-center space-x-8">
                         <a href="/" class="text-2xl font-bold text-[#0077b6]">Mathlan<span class="text-[#023e8a]"></span></a>
-                        <!-- Navegación principal para usuarios logueados -->
                         <div class="hidden md:flex items-baseline space-x-6">
                             <a href="/dashboard_estudiante.html" class="font-semibold text-gray-800 hover:text-[#0077b6]">Mi Dashboard</a>
                             <a href="/foro.html" class="font-semibold text-gray-600 hover:text-[#0077b6]">Foro Comunitario</a>
@@ -41,7 +40,6 @@
         </header>
 
         <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
-            <!-- Navegación secundaria (dentro del dashboard) -->
             <div class="border-b border-gray-200 mb-6">
                 <nav class="-mb-px flex space-x-6" id="dashboard-tabs">
                     <a href="#" data-view="dashboard" class="nav-link active">Resumen</a>
@@ -50,7 +48,6 @@
                 </nav>
             </div>
             
-            <!-- Vistas del Dashboard -->
             <div id="dashboard-view" class="view">
                 <h1 class="text-3xl font-bold tracking-tight text-gray-900 mb-6">Panel de Estudiante</h1>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
@@ -78,14 +75,16 @@
         </main>
     </div>
 
-    <!-- Modal para mostrar el Informe de Sesión -->
     <div id="report-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 modal-backdrop flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full">
             <div class="p-6 border-b flex justify-between items-center">
-                <h2 class="text-xl font-bold">Informe de la Sesión</h2>
+                <h2 class="text-xl font-bold">Informe de Progreso</h2>
                 <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
             </div>
-            <div id="report-content" class="p-6 md:p-8 space-y-6"></div>
+            <div id="report-content" class="p-6 md:p-8 space-y-6 max-h-[70vh] overflow-y-auto"></div>
+            <div class="p-4 bg-gray-50 border-t text-right">
+                <button id="download-pdf-btn" class="rounded-md btn-primary px-4 py-2 font-semibold text-white shadow-sm">Descargar PDF</button>
+            </div>
         </div>
     </div>
 
@@ -103,6 +102,7 @@
             const reportModal = document.getElementById('report-modal');
             const reportContent = document.getElementById('report-content');
             const closeModalBtn = document.getElementById('close-modal-btn');
+            let currentInformeId = null; // Variable global para guardar el ID del informe abierto
 
             const navigateTo = (viewId) => {
                 views.forEach(v => v.classList.add('hidden'));
@@ -125,7 +125,14 @@
                         let statusBadge = '';
                         let actionButton = '';
 
-                        if (q.estado === 'Llamada en curso') {
+                        if (q.estado === 'Agendada') {
+                            const fechaAgendada = new Date(q.fechaLlamadaAgendada).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+                            statusBadge = `<span class="status-badge bg-indigo-100 text-indigo-800">Agendada</span>`;
+                            actionButton = `<div class="text-right">
+                                              <p class="text-sm font-semibold text-gray-700">${fechaAgendada} hs.</p>
+                                              <span class="text-xs text-gray-500">¡Prepárate para tu sesión!</span>
+                                            </div>`;
+                        } else if (q.estado === 'Llamada en curso') {
                             statusBadge = `<span class="status-badge bg-blue-100 text-blue-800">${q.estado}</span>`;
                             actionButton = `<a href="/llamada.html?sala=${q.salaLlamada}&consultaId=${q.id}" class="btn-primary py-2 px-4 rounded-lg text-sm">Unirse a la Llamada</a>`;
                         } else if (q.estado === 'Respondida') {
@@ -135,7 +142,18 @@
                             statusBadge = `<span class="status-badge bg-yellow-100 text-yellow-800">${q.estado}</span>`;
                         }
                         
-                        const card = `<div class="bg-white p-6 rounded-lg shadow"><div class="flex justify-between items-start flex-wrap gap-2"><div><p class="text-sm font-semibold text-gray-500">${q.materia}</p><h3 class="text-lg font-semibold text-gray-800 mt-1">${q.titulo}</h3></div><div class="flex items-center gap-3 flex-shrink-0">${statusBadge}${actionButton}</div></div></div>`;
+                        const card = `<div class="bg-white p-6 rounded-lg shadow">
+                                        <div class="flex justify-between items-start flex-wrap gap-2">
+                                            <div>
+                                                <p class="text-sm font-semibold text-gray-500">${q.materia}</p>
+                                                <h3 class="text-lg font-semibold text-gray-800 mt-1">${q.titulo}</h3>
+                                            </div>
+                                            <div class="flex items-center gap-3 flex-shrink-0">
+                                                ${statusBadge}
+                                                ${actionButton}
+                                            </div>
+                                        </div>
+                                      </div>`;
                         questionsListContainer.innerHTML += card;
                     });
                 }
@@ -151,13 +169,11 @@
             const fetchConsultas = async () => {
                 try {
                     const response = await fetch('/api/consultas', { headers });
-                    if (response.status === 403) { localStorage.removeItem('jwtToken'); window.location.href = '/login.html'; return; }
                     if (!response.ok) throw new Error('Error al cargar las consultas.');
                     const questions = await response.json();
                     renderQuestions(questions);
                 } catch (error) {
-                    console.error("Error en fetchConsultas:", error);
-                    questionsListContainer.innerHTML = '<p class="text-red-500">No se pudieron cargar tus consultas.</p>';
+                    questionsListContainer.innerHTML = `<p class="text-red-500">No se pudieron cargar tus consultas.</p>`;
                 }
             };
             
@@ -188,10 +204,58 @@
                         const response = await fetch(`/api/consultas/${consultaId}/informe`, { headers });
                         if (!response.ok) { throw new Error('Informe no encontrado o aún no disponible.'); }
                         const informe = await response.json();
-                        reportContent.innerHTML = `<div><h3 class="font-semibold text-gray-800">Puntos Fuertes</h3><p class="mt-2 text-gray-600 bg-gray-50 p-3 rounded-md">${informe.puntosFuertes}</p></div><div><h3 class="font-semibold text-gray-800">Áreas a Mejorar</h3><p class="mt-2 text-gray-600 bg-gray-50 p-3 rounded-md">${informe.areasAMejorar}</p></div><div><h3 class="font-semibold text-gray-800">Recomendaciones</h3><p class="mt-2 text-gray-600 bg-gray-50 p-3 rounded-md">${informe.recomendaciones || 'Sin recomendaciones.'}</p></div>`;
+                        currentInformeId = informe.id;
+                        
+                        reportContent.innerHTML = `
+                            <div class="mb-4">
+                                <h3 class="font-semibold text-gray-800 border-b pb-2">Resumen del Progreso</h3>
+                                <ul class="mt-2 text-sm space-y-1">
+                                    <li><strong>Participación general:</strong> ${informe.participacionGeneral || 'N/A'}</li>
+                                    <li><strong>Cumplimiento de tareas:</strong> ${informe.cumplimientoTareas || 'N/A'}</li>
+                                    <li><strong>Nivel de avance:</strong> ${informe.nivelAvance || 'N/A'}</li>
+                                    <li><strong>Desempeño promedio:</strong> ${informe.desempenoPromedio || 'N/A'}</li>
+                                </ul>
+                            </div>
+                            <div class="mb-4">
+                                <h3 class="font-semibold text-gray-800 border-b pb-2">Evaluación de Desempeño</h3>
+                                 <ul class="mt-2 text-sm space-y-1">
+                                    <li><strong>Resolución de problemas:</strong> ${informe.resolucionProblemas || 'N/A'}</li>
+                                    <li><strong>Razonamiento lógico:</strong> ${informe.razonamientoLogico || 'N/A'}</li>
+                                    <li><strong>Cálculo y operaciones:</strong> ${informe.calculoOperaciones || 'N/A'}</li>
+                                    <li><strong>Participación en plataforma:</strong> ${informe.participacionPlataforma || 'N/A'}</li>
+                                </ul>
+                            </div>
+                            <div>
+                                <h3 class="font-semibold text-gray-800 border-b pb-2">Observaciones del Docente</h3>
+                                <p class="mt-2 text-gray-600 bg-gray-50 p-3 rounded-md text-sm">${informe.puntosFuertes || 'Sin observaciones.'}</p>
+                            </div>
+                        `;
                     } catch (error) {
                         reportContent.innerHTML = `<p class="text-red-500">${error.message}</p>`;
                     }
+                }
+            });
+            
+            document.getElementById('download-pdf-btn').addEventListener('click', async () => {
+                if (!currentInformeId) return;
+                try {
+                    const response = await fetch(`/api/informes/${currentInformeId}/download`, {
+                        method: 'GET',
+                        headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken')}` }
+                    });
+                    if (!response.ok) throw new Error('No se pudo generar el PDF.');
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `Informe_Progreso_Mathlan.pdf`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                } catch(error) {
+                    alert(error.message);
                 }
             });
 
@@ -200,4 +264,3 @@
     </script>
 </body>
 </html>
-
