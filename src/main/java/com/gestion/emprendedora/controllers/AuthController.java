@@ -5,22 +5,20 @@ import com.gestion.emprendedora.dto.JwtResponseDTO;
 import com.gestion.emprendedora.dto.LoginRequestDTO;
 import com.gestion.emprendedora.dto.RegistroRequestDTO;
 import com.gestion.emprendedora.entities.Usuario;
+import com.gestion.emprendedora.repositories.RegistroPendienteRepository; // ¡Importante añadir!
 import com.gestion.emprendedora.services.AuthService;
 import com.gestion.emprendedora.services.UserDetailsServiceImpl;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException; // ¡Importante añadir!
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * Controlador para manejar las peticiones de autenticación.
- * Usa @Controller para poder redirigir a páginas HTML de verificación.
- */
 @Controller
 @RequestMapping("/api/auth")
 public class AuthController {
@@ -37,13 +35,14 @@ public class AuthController {
     @Autowired
     private JwtUtil jwtUtil;
 
-    /**
-     * Endpoint para registrar un nuevo usuario.
-     * Si el usuario es menor de edad, inicia el flujo de verificación del tutor.
-     */
+    // --- ¡NUEVA INYECCIÓN! ---
+    @Autowired
+    private RegistroPendienteRepository registroPendienteRepository;
+
     @PostMapping("/registrar")
-    @ResponseBody // Indica que este método devuelve datos (JSON), no una vista HTML.
+    @ResponseBody
     public ResponseEntity<?> registrarUsuario(@Valid @RequestBody RegistroRequestDTO registroRequest) {
+        // ... (código sin cambios)
         try {
             authService.registrarUsuario(registroRequest);
             return ResponseEntity.ok("Registro procesado. Por favor, siga las instrucciones.");
@@ -53,20 +52,33 @@ public class AuthController {
     }
 
     /**
-     * Endpoint para autenticar un usuario y obtener un token JWT junto con su rol y estado.
+     * ¡MÉTODO COMPLETAMENTE ACTUALIZADO!
+     * Ahora maneja 3 casos de error distintos:
+     * 1. Cuenta pendiente de activación del tutor.
+     * 2. Cuenta pendiente de activación del administrador.
+     * 3. Credenciales incorrectas.
      */
     @PostMapping("/login")
-    @ResponseBody // Indica que este método devuelve datos (JSON).
+    @ResponseBody
     public ResponseEntity<?> loginUsuario(@Valid @RequestBody LoginRequestDTO loginRequest) {
         try {
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(loginRequest.getEmail(), loginRequest.getPassword())
             );
-        } catch (Exception e) {
-            return ResponseEntity.status(401).body("Error: Credenciales inválidas");
+        } catch (DisabledException e) {
+            // Este error ocurre si la cuenta existe pero isEnabled() devuelve false (estado != 'activo').
+            return ResponseEntity.status(401).body("Error: Tu cuenta está pendiente de activación por un administrador.");
+        } catch (BadCredentialsException e) {
+            // Este error ocurre si el usuario no se encuentra o la contraseña es incorrecta.
+            // Verificamos si es porque está pendiente de la activación del tutor.
+            if (registroPendienteRepository.findByEmail(loginRequest.getEmail()).isPresent()) {
+                return ResponseEntity.status(401).body("Error: Tu cuenta está pendiente. Pídele a tu tutor que la active desde el correo de verificación.");
+            }
+            // Si no, es simplemente un error de credenciales.
+            return ResponseEntity.status(401).body("Error: Correo o contraseña inválidos.");
         }
 
-        // Como nuestro UserDetailsServiceImpl ahora devuelve un objeto Usuario, podemos hacer un cast
+        // Si la autenticación es exitosa, el resto del código se ejecuta
         Usuario userDetails = (Usuario) userDetailsService.loadUserByUsername(loginRequest.getEmail());
         final String jwt = jwtUtil.generateToken(userDetails);
 
@@ -79,26 +91,17 @@ public class AuthController {
             role = role.substring(5).toLowerCase();
         }
 
-        // Devolvemos el token, el rol y ahora también el estado
         return ResponseEntity.ok(new JwtResponseDTO(jwt, role, userDetails.getEstado()));
     }
     
-    /**
-     * ¡NUEVO ENDPOINT!
-     * Este es el que el tutor visitará desde el enlace en su correo electrónico.
-     * @param token El token de verificación único.
-     * @return Una redirección a una página de éxito o de fallo.
-     */
     @GetMapping("/verificar")
     public String verificarCuenta(@RequestParam("token") String token) {
+        // ... (código sin cambios)
         try {
             authService.verificarToken(token);
-            // Si el token es válido, redirige a la página de éxito.
             return "redirect:/verificacion_exitosa.html";
         } catch (Exception e) {
-            // Si el token es inválido o ha expirado, redirige a la página de error.
             return "redirect:/verificacion_fallida.html";
         }
     }
 }
-

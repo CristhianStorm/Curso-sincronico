@@ -11,10 +11,6 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
-/**
- * Entidad que representa la tabla USUARIOS en la base de datos.
- * Implementa UserDetails para integrarse directamente con Spring Security.
- */
 @Entity
 @Table(name = "USUARIOS")
 @Data
@@ -52,14 +48,8 @@ public class Usuario implements UserDetails {
     @Column(name = "ESTADO")
     private String estado;
 
-    /**
-     * ¡CAMPO NUEVO!
-     * Almacena el correo del tutor para estudiantes menores de edad.
-     * Será nulo para usuarios mayores de edad.
-     */
     @Column(name = "EMAIL_TUTOR")
     private String emailTutor;
-
 
     @Column(name = "TOKEN_VERIFICACION")
     private String tokenVerificacion;
@@ -99,13 +89,12 @@ public class Usuario implements UserDetails {
     }
 
     /**
-     * Indica si el usuario está habilitado. En nuestro flujo, permitimos el login
-     * incluso si la cuenta no está "activa" para poder redirigirlo a la página correcta
-     * (ej: "esperando verificación" o "pendiente de pago"). La lógica de bloqueo real
-     * la maneja el frontend basándose en el campo 'estado'.
+     * ¡MÉTODO CORREGIDO!
+     * Ahora, este método solo devuelve 'true' si el estado del usuario en la base de datos
+     * es exactamente "activo". De lo contrario, Spring Security bloqueará el inicio de sesión.
      */
     @Override
     public boolean isEnabled() {
-        return true; 
+        return "activo".equals(this.estado);
     }
 }

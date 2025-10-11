@@ -6,34 +6,15 @@
     <title>Mathlan - Sala de Videollamada</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* CSS Simplificado: Solo lo necesario para Jitsi */
         html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; }
         #meet { height: 100vh; width: 100vw; }
-        /* Estilos para nuestra barra de control personalizada */
-        #custom-controls {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 7%;
-            padding: 1rem;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-        }
     </style>
 </head>
 <body>
-    <!-- Contenedor para Jitsi -->
     <div id="meet"></div>
 
-    <!-- ¡NUEVO! Nuestra barra de control personalizada -->
-    <div id="custom-controls">
-        <button id="end-call-btn" class="bg-red-600 hover:bg-red-800 text-white font-bold py-3 px-6 rounded-lg transition">
-            <!-- El texto del botón se pondrá con JS -->
-        </button>
-    </div>
-
-    <script src="https://meet.jit.si/external_api.js"></script>
+    <script src="https://8x8.vc/vpaas-magic-cookie-729aea9cf02f4196a678547036578959/external_api.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
             const token = localStorage.getItem('jwtToken');
@@ -51,44 +32,32 @@
             }
 
             try {
-                const userResponse = await fetch('/api/users/me', { headers });
-                if (!userResponse.ok) throw new Error('No se pudo obtener la información del usuario.');
-                const userInfo = await userResponse.json();
+                const tokenResponse = await fetch('/api/jitsi/token', { headers });
+                if (!tokenResponse.ok) throw new Error('No se pudo obtener el token para la videollamada.');
+                const { token: jitsiToken } = await tokenResponse.json();
 
-                const domain = 'meet.jit.si';
+                const domain = '8x8.vc';
                 const options = {
-                    roomName: roomName,
+                    roomName: `vpaas-magic-cookie-729aea9cf02f4196a678547036578959/${roomName}`,
                     width: '100%',
                     height: '100%',
                     parentNode: document.querySelector('#meet'),
-                    userInfo: { email: userInfo.email, displayName: userInfo.nombreCompleto },
-                    configOverwrite: { prejoinPageEnabled: false },
-                    interfaceConfigOverwrite: { SHOW_JITSI_WATERMARK: false }
+                    jwt: jitsiToken
                 };
                 
                 const api = new JitsiMeetExternalAPI(domain, options);
                 
-                // --- LÓGICA DE CONTROL ACTUALIZADA ---
-                const endCallBtn = document.getElementById('end-call-btn');
-                
-                // 1. Definimos qué hace el botón según el rol
-                if (role === 'docente') {
-                    endCallBtn.textContent = 'Terminar Llamada';
-                    endCallBtn.addEventListener('click', () => {
-                        api.dispose(); // Cierra la llamada de Jitsi
-                        window.location.href = `/informe_docente.html?consultaId=${consultaId}`;
-                    });
-                } else {
-                    endCallBtn.textContent = 'Salir de la Llamada';
-                    endCallBtn.addEventListener('click', () => {
-                        api.dispose();
-                        window.location.href = '/dashboard_estudiante.html';
-                    });
-                }
+                // --- CÓDIGO DEL BOTÓN PERSONALIZADO ELIMINADO ---
+                // Ya no necesitamos obtener el botón ni añadirle un 'click listener'.
 
-                // 2. Quitamos el listener problemático
-                // Ya no redirigimos automáticamente cuando Jitsi dice que alguien salió.
-                // api.addEventListener('videoConferenceLeft', () => { ... });
+                // El "oyente" que hace toda la magia se queda.
+                api.addEventListener('videoConferenceLeft', () => {
+                    if (role === 'docente') {
+                        window.location.href = `/informe_docente.html?consultaId=${consultaId}`;
+                    } else {
+                        window.location.href = '/dashboard_estudiante.html';
+                    }
+                });
 
             } catch (error) {
                 document.body.innerHTML = `<h1>Error al iniciar la llamada: ${error.message}</h1>`;
@@ -97,4 +66,3 @@
     </script>
 </body>
 </html>
-
