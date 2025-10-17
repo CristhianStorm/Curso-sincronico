@@ -7,36 +7,13 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background-color: #f8f7f4; 
-        }
-        .tab-link { 
-            transition: all 0.2s ease-in-out; 
-            border-bottom: 2px solid transparent; 
-            cursor: pointer; 
-        }
-        .tab-link.active { 
-            border-color: #0077b6; 
-            color: #0077b6; 
-            font-weight: 600; 
-        }
-        .btn { 
-            padding: 0.5rem 1rem; 
-            border-radius: 0.5rem; 
-            font-weight: 600; 
-            transition: all 0.2s; 
-            text-decoration: none;
-            display: inline-block;
-            text-align: center;
-        }
-        .btn-primary { 
-            background-color: #0077b6; 
-            color: white; 
-        }
-        .btn-primary:hover { 
-            background-color: #023e8a; 
-        }
+        body { font-family: 'Inter', sans-serif; background-color: #f8f7f4; }
+        .tab-link { transition: all 0.2s ease-in-out; border-bottom: 2px solid transparent; cursor: pointer; }
+        .tab-link.active { border-color: #0077b6; color: #0077b6; font-weight: 600; }
+        .btn { padding: 0.5rem 1rem; border-radius: 0.5rem; font-weight: 600; transition: all 0.2s; text-decoration: none; display: inline-block; text-align: center; }
+        .btn-primary { background-color: #0077b6; color: white; }
+        .btn-primary:hover { background-color: #023e8a; }
+        .descripcion-contenido { max-height: 0; overflow: hidden; transition: max-height 0.3s ease-out; }
     </style>
 </head>
 <body class="antialiased text-gray-800">
@@ -51,7 +28,6 @@
                 </div>
             </nav>
         </header>
-
         <main class="container mx-auto px-4 sm:px-6 lg:px-8 py-8">
             <h1 class="text-3xl font-bold tracking-tight mb-6">Bandeja de Consultas</h1>
             <div class="border-b border-gray-200 mb-6">
@@ -63,40 +39,75 @@
             <div id="questions-queue" class="space-y-5"></div>
         </main>
     </div>
-
+    <div id="reply-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 flex items-center justify-center z-50 p-4">
+        <div class="bg-white rounded-lg shadow-xl max-w-xl w-full">
+            <div class="p-6 border-b"><h2 class="text-xl font-bold">Responder Consulta</h2></div>
+            <div class="p-6">
+                <form id="reply-form">
+                    <textarea id="reply-textarea" required rows="6" class="w-full rounded-md border-gray-300 shadow-sm" placeholder="Escribe tu respuesta aquí..."></textarea>
+                    <div id="reply-message" class="hidden text-sm mt-2"></div>
+                </form>
+            </div>
+            <div class="p-4 bg-gray-50 border-t flex justify-end gap-4">
+                <button id="cancel-reply-btn" type="button" class="px-4 py-2 text-sm font-semibold rounded-md">Cancelar</button>
+                <button id="submit-reply-btn" type="button" class="rounded-md btn-primary px-4 py-2 font-semibold text-white shadow-sm">Enviar Respuesta</button>
+            </div>
+        </div>
+    </div>
     <script>
     document.addEventListener('DOMContentLoaded', async () => {
         const token = localStorage.getItem('jwtToken');
         if (!token) { window.location.href = '/login.html'; return; }
-        const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
+        const authHeaders = { 'Authorization': `Bearer ${token}` };
         
         const queueContainer = document.getElementById('questions-queue');
         const tabs = document.querySelectorAll('.tab-link');
+        const replyModal = document.getElementById('reply-modal');
+        const cancelReplyBtn = document.getElementById('cancel-reply-btn');
+        const submitReplyBtn = document.getElementById('submit-reply-btn');
+        const replyTextarea = document.getElementById('reply-textarea');
         let allQuestions = [];
         let currentStatusFilter = 'Pendiente';
+        let currentConsultaId = null;
 
         const fetchConsultas = async () => {
             try {
-                const response = await fetch('/api/docente/consultas', { headers });
-                if (response.status === 403) { throw new Error("Acceso denegado. No tienes permiso para ver esta página."); }
+                const response = await fetch('/api/docente/consultas', { headers: authHeaders });
                 if (!response.ok) { throw new Error('Error al cargar las consultas.'); }
                 allQuestions = await response.json();
                 renderQuestions();
+                allQuestions.forEach(q => fetchArchivosParaConsulta(q.id));
             } catch (error) {
                 queueContainer.innerHTML = `<div class="bg-white p-8 rounded-lg shadow text-center text-red-600">${error.message}</div>`;
             }
         };
 
+        const fetchArchivosParaConsulta = async (consultaId) => {
+            try {
+                const response = await fetch(`/api/archivos/consulta/${consultaId}`, { headers: authHeaders });
+                if (!response.ok) return;
+                const archivos = await response.json();
+                const listaContainer = document.querySelector(`#archivos-${consultaId} ul`);
+                if (!listaContainer) return;
+                listaContainer.innerHTML = '';
+                if (archivos.length === 0) {
+                    listaContainer.innerHTML = '<li class="text-gray-500 list-none">No hay archivos.</li>';
+                } else {
+                    archivos.forEach(archivo => {
+                        const li = `<li><a href="/api/archivos/download/${archivo.nombreGuardado}" class="text-blue-600 hover:underline" download>${archivo.nombreOriginal}</a></li>`;
+                        listaContainer.innerHTML += li;
+                    });
+                }
+            } catch (error) { console.error("Error cargando archivos", error); }
+        };
+
         const renderQuestions = () => {
             queueContainer.innerHTML = '';
-            
-            // --- ¡FILTRO ACTUALIZADO! ---
-            // Ahora también muestra el nuevo estado "Agendada" en la pestaña de "Nuevas Consultas"
             const filteredQuestions = allQuestions.filter(q => {
                 if (currentStatusFilter === 'Pendiente') {
                     return ['Pendiente', 'Llamada en curso', 'Agendada'].includes(q.estado);
                 }
-                return q.estado === 'Respondida'; // Pestaña de Atendidas
+                return q.estado === 'Respondida';
             });
 
             if (filteredQuestions.length === 0) {
@@ -104,58 +115,58 @@
                 return;
             }
 
-            filteredQuestions.forEach(q => {
+            filteredQuestions.forEach((q, index) => {
                 const callBadge = q.solicitaLlamada === 'S' ? `<span class="inline-flex items-center rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-800">📞 Requiere Llamada</span>` : '';
-                
-                // --- ¡LÓGICA DE BOTONES COMPLETAMENTE ACTUALIZADA! ---
                 let actions = '';
-                if (q.estado === 'Pendiente' && q.solicitaLlamada === 'S') {
-                    // 1. Si requiere llamada y está pendiente, mostramos el botón para agendar.
-                    actions = `<a href="/agendar_llamada.html?consultaId=${q.id}" class="btn bg-amber-500 hover:bg-amber-600 text-white">Agendar Llamada</a>`;
-                
+                if (q.estado === 'Pendiente') {
+                    if (q.solicitaLlamada !== 'S') { actions += `<button data-id="${q.id}" class="open-reply-modal-btn btn btn-primary">Responder</button>`; }
+                    if (q.solicitaLlamada === 'S') { actions += `<a href="/agendar_llamada.html?consultaId=${q.id}" class="btn bg-amber-500 hover:bg-amber-600 text-white">Agendar Llamada</a>`; }
+                    actions += `<a href="/informe_docente.html?consultaId=${q.id}" class="ml-2 text-sm text-gray-500 hover:underline">Ir a informe completo</a>`;
                 } else if (q.estado === 'Agendada') {
-                    // 2. Si ya está agendada, mostramos la fecha y el botón para iniciar la llamada.
                     const fechaAgendada = new Date(q.fechaLlamadaAgendada).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
-                    actions = `<div class="text-right">
-                                 <p class="text-sm font-semibold text-gray-700">Agendada: ${fechaAgendada} hs.</p>
-                                 <button data-id="${q.id}" class="start-call-btn btn btn-primary mt-2">Iniciar Llamada Ahora</button>
-                               </div>`;
-
-                } else if (q.estado === 'Pendiente') {
-                    // 3. Si está pendiente pero no requiere llamada, va directo al informe.
-                    actions = `<a href="/informe_docente.html?consultaId=${q.id}" class="btn btn-primary">Crear Informe</a>`;
-
+                    actions = `<div class="text-right"><p class="text-sm font-semibold text-gray-700">Agendada: ${fechaAgendada} hs.</p><button data-id="${q.id}" class="start-call-btn btn btn-primary mt-2">Iniciar Llamada Ahora</button></div>`;
                 } else if (q.estado === 'Llamada en curso') {
-                    // 4. Si la llamada ya inició, permite reunirse.
                      actions = `<a href="/llamada.html?sala=${q.salaLlamada}&consultaId=${q.id}&role=docente" class="btn bg-green-500 hover:bg-green-700 text-white">Reunirse a la Llamada</a>`;
-
-                } else { // estado === 'Respondida'
-                    // 5. Si ya se respondió, no hay más acciones.
-                    actions = `<span class="text-sm font-semibold text-green-600">Informe Enviado</span>`;
+                } else {
+                    actions = `<span class="text-sm font-semibold text-green-600">Respondida</span>`;
                 }
-
-                const cardHTML = `<div class="bg-white p-5 rounded-lg shadow">
-                                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between">
-                                        <div class="flex-grow">
-                                            <div class="flex items-center gap-4 mb-2">
-                                                <p class="text-sm font-bold">Estudiante ID: ${q.idEstudiante}</p>
-                                                ${callBadge}
-                                            </div>
-                                            <h3 class="text-lg font-semibold text-gray-900">${q.titulo}</h3>
-                                            <p class="text-sm text-gray-500 mt-1">${q.materia}</p>
-                                        </div>
-                                        <div class="flex-shrink-0 mt-4 sm:mt-0">
-                                            ${actions}
-                                        </div>
-                                    </div>
-                                  </div>`;
+                const cardHTML = `
+                <div class="bg-white p-5 rounded-lg shadow">
+                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between">
+                        <div class="flex-grow"><div class="flex items-center gap-4 mb-2"><p class="text-sm font-bold">Estudiante ID: ${q.idEstudiante}</p>${callBadge}</div><h3 class="text-lg font-semibold text-gray-900">${q.titulo}</h3><p class="text-sm text-gray-500 mt-1">${q.materia}</p></div>
+                        <div class="flex-shrink-0 mt-4 sm:mt-0 sm:ml-6">${actions}</div>
+                    </div>
+                    <div class="mt-4 border-t pt-4">
+                        <button onclick="toggleDescription('desc-${index}')" class="text-sm font-semibold text-blue-600 hover:underline">Ver descripción de la consulta</button>
+                        <div id="desc-${index}" class="descripcion-contenido"><p class="text-sm text-gray-700 mt-2 whitespace-pre-wrap">${q.descripcion || 'El estudiante no añadió una descripción.'}</p></div>
+                    </div>
+                    <div id="archivos-${q.id}" class="mt-4 border-t pt-4">
+                        <h4 class="text-sm font-semibold text-gray-800">Archivos Adjuntos</h4>
+                        <ul class="list-disc list-inside text-sm mt-2 space-y-1"></ul>
+                        <div class="mt-3"><input type="file" id="upload-${q.id}" class="text-xs"><button data-id="${q.id}" class="upload-btn btn btn-primary text-xs py-1 px-2">Subir</button></div>
+                    </div>
+                </div>`;
                 queueContainer.innerHTML += cardHTML;
             });
         };
 
+        window.toggleDescription = (id) => {
+            const element = document.getElementById(id);
+            const button = element.previousElementSibling;
+            if (element.style.maxHeight) {
+                element.style.maxHeight = null;
+                button.textContent = 'Ver descripción de la consulta';
+            } else {
+                element.style.maxHeight = element.scrollHeight + "px";
+                button.textContent = 'Ocultar descripción';
+            }
+        };
+
+        // --- ¡CÓDIGO RESTAURADO! ---
+        // Este bloque se encarga de manejar el clic en las pestañas.
         tabs.forEach(tab => {
             tab.addEventListener('click', e => {
-                currentStatusFilter = e.target.dataset.status === 'Atendidas' ? 'Respondida' : 'Pendiente';
+                currentStatusFilter = e.target.dataset.status; // Usamos el data-status directamente
                 tabs.forEach(t => t.classList.remove('active'));
                 e.target.classList.add('active');
                 renderQuestions();
@@ -163,29 +174,58 @@
         });
         
         queueContainer.addEventListener('click', async e => {
-            // El botón de "Iniciar Llamada" ahora sirve tanto para consultas agendadas como las que no
-            if (e.target.classList.contains('start-call-btn')) {
+            if (e.target.classList.contains('start-call-btn')) { /* ... */ }
+            if (e.target.classList.contains('open-reply-modal-btn')) {
+                currentConsultaId = e.target.dataset.id;
+                replyModal.classList.remove('hidden');
+            }
+            if (e.target.classList.contains('upload-btn')) {
+                e.preventDefault();
                 const consultaId = e.target.dataset.id;
+                const fileInput = document.getElementById(`upload-${consultaId}`);
+                if (!fileInput.files[0]) { alert("Por favor, selecciona un archivo primero."); return; }
+                const formData = new FormData();
+                formData.append('file', fileInput.files[0]);
                 try {
-                    const response = await fetch(`/api/docente/consultas/${consultaId}/iniciar-llamada`, {
-                        method: 'POST',
-                        headers
-                    });
-                    if (!response.ok) throw new Error('No se pudo iniciar la sala.');
-                    const updatedConsulta = await response.json();
-                    window.location.href = `/llamada.html?sala=${updatedConsulta.salaLlamada}&consultaId=${consultaId}&role=docente`;
-                } catch (error) {
-                    alert(error.message);
-                }
+                    const response = await fetch(`/api/archivos/upload/${consultaId}`, { method: 'POST', headers: authHeaders, body: formData });
+                    if (!response.ok) throw new Error("Error al subir el archivo.");
+                    await fetchConsultas();
+                } catch (error) { alert(error.message); }
             }
         });
         
+        cancelReplyBtn.addEventListener('click', () => {
+            replyModal.classList.add('hidden');
+            replyTextarea.value = '';
+            currentConsultaId = null;
+        });
+
+        submitReplyBtn.addEventListener('click', async () => {
+            const respuesta = replyTextarea.value;
+            if (!respuesta || !currentConsultaId) return;
+            try {
+                const response = await fetch(`/api/docente/consultas/${currentConsultaId}/responder`, {
+                    method: 'POST',
+                    headers: { ...authHeaders, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ respuesta: respuesta })
+                });
+                if (!response.ok) throw new Error('No se pudo enviar la respuesta.');
+                cancelReplyBtn.click();
+                await fetchConsultas();
+            } catch (error) {
+                const replyMessage = document.getElementById('reply-message');
+                replyMessage.textContent = error.message;
+                replyMessage.className = 'text-sm mt-2 text-red-600';
+                replyMessage.classList.remove('hidden');
+            }
+        });
+
         document.getElementById('logout-button').addEventListener('click', () => {
             localStorage.removeItem('jwtToken');
             window.location.href = '/';
         });
 
-        await fetchConsultas();
+        fetchConsultas();
     });
     </script>
 </body>

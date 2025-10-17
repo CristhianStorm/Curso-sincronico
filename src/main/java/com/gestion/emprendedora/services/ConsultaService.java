@@ -8,8 +8,10 @@ import com.gestion.emprendedora.repositories.UsuarioRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional; // ¡Importante añadir esta línea!
 
-import java.util.Date; // Asegúrate de tener este import
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -21,30 +23,31 @@ public class ConsultaService {
     @Autowired
     private UsuarioRepository usuarioRepository;
 
+    @Autowired
+    private FileStorageService fileStorageService;
+
     /**
      * Busca las consultas de un usuario específico por su email.
-     * @param email El email del usuario autenticado.
-     * @return Una lista de sus consultas, ordenadas por la más reciente primero.
      */
     public List<Consulta> findConsultasByEmail(String email) {
-        // Primero, encontramos al usuario por su email para obtener su ID.
         Usuario usuario = usuarioRepository.findByEmail(email)
             .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
         
-        // Luego, usamos ese ID para buscar todas sus consultas.
         return consultaRepository.findByIdEstudianteOrderByIdDesc(usuario.getId());
     }
 
     /**
-     * Crea una nueva consulta para un usuario.
-     * @param consultaDTO Los datos de la nueva consulta desde el formulario.
-     * @param email El email del usuario autenticado.
-     * @return La consulta recién guardada en la base de datos.
+     * ¡MÉTODO UNIFICADO Y CORREGIDO!
+     * Crea una nueva consulta y, si se proporciona un archivo, lo guarda y asocia.
+     * @Transactional asegura que o se guardan ambos (consulta y archivo) o no se guarda nada.
      */
-    public Consulta createConsulta(CreateConsultaDTO consultaDTO, String email) {
+    @Transactional
+    public Consulta createConsulta(CreateConsultaDTO consultaDTO, String email, MultipartFile file) {
+        // 1. Buscamos al usuario que crea la consulta
         Usuario usuario = usuarioRepository.findByEmail(email)
             .orElseThrow(() -> new UsernameNotFoundException("Usuario no encontrado con email: " + email));
         
+        // 2. Creamos y populamos la nueva entidad Consulta
         Consulta nuevaConsulta = new Consulta();
         nuevaConsulta.setIdEstudiante(usuario.getId());
         nuevaConsulta.setMateria(consultaDTO.getMateria());
@@ -52,9 +55,18 @@ public class ConsultaService {
         nuevaConsulta.setDescripcion(consultaDTO.getDescripcion());
         nuevaConsulta.setSolicitaLlamada(consultaDTO.isSolicitaLlamada() ? 'S' : 'N');
         nuevaConsulta.setEstado("Pendiente");
-        nuevaConsulta.setFechaCreacion(new Date()); // Asignamos la fecha actual
+        nuevaConsulta.setFechaCreacion(new Date());
 
-        return consultaRepository.save(nuevaConsulta);
+        // 3. Guardamos la consulta para obtener su ID
+        Consulta consultaGuardada = consultaRepository.save(nuevaConsulta);
+
+        // 4. Si el usuario adjuntó un archivo, lo guardamos usando el FileStorageService
+        if (file != null && !file.isEmpty()) {
+            // Este método ya se encarga de crear el registro en la tabla ArchivoAdjunto
+            fileStorageService.guardarArchivo(file, consultaGuardada.getId(), usuario);
+        }
+
+        // 5. Devolvemos la consulta recién creada
+        return consultaGuardada;
     }
 }
-

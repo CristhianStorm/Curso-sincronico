@@ -49,9 +49,6 @@ public class SecurityConfig {
         return authenticationManagerBuilder.build();
     }
 
-    /**
-     * Configuración de CORS para permitir la comunicación entre el frontend y el backend.
-     */
     @Bean
     CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
@@ -89,6 +86,10 @@ public class SecurityConfig {
                 // URLs solo para administradores:
                 .requestMatchers("/api/admin/**").hasRole("ADMINISTRADOR")
 
+                // --- ¡ESTA ES LA ÚNICA LÍNEA AÑADIDA A TU CÓDIGO! ---
+                // Se añade esta regla específica para que tanto ESTUDIANTE como DOCENTE puedan acceder a la API de archivos.
+                .requestMatchers("/api/archivos/**").hasAnyRole("ESTUDIANTE", "DOCENTE")
+
                 // Cualquier otra solicitud (ej: /api/consultas) requiere que el usuario esté, como mínimo, autenticado.
                 .anyRequest().authenticated() 
             )
@@ -98,4 +99,3 @@ public class SecurityConfig {
         return http.build();
     }
 }
-

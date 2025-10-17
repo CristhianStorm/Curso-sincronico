@@ -31,29 +31,31 @@ public class DocenteService {
     @Autowired
     private EmailService emailService;
 
-    // --- ¡NUEVA INYECCIÓN! ---
     @Autowired
     private PdfService pdfService;
 
-    // ... (getAllConsultas y agendarLlamada se mantienen igual)
     public List<Consulta> getAllConsultas() {
         return consultaRepository.findAll();
     }
 
     @Transactional
     public Consulta agendarLlamada(Long consultaId, Long fechaHoraTimestamp, String docenteEmail) {
-        // ... (código sin cambios)
         Usuario docente = usuarioRepository.findByEmail(docenteEmail)
             .orElseThrow(() -> new UsernameNotFoundException("Docente no encontrado"));
+
         Consulta consulta = consultaRepository.findById(consultaId)
             .orElseThrow(() -> new RuntimeException("Consulta no encontrada"));
+
         Usuario estudiante = usuarioRepository.findById(consulta.getIdEstudiante())
             .orElseThrow(() -> new RuntimeException("Estudiante no encontrado para la consulta"));
+
         Date fechaAgendada = new Date(fechaHoraTimestamp);
+
         consulta.setFechaLlamadaAgendada(fechaAgendada);
         consulta.setEstado("Agendada");
         consulta.setIdDocenteAsignado(docente.getId());
         Consulta consultaActualizada = consultaRepository.save(consulta);
+
         emailService.sendSchedulingConfirmationEmail(
             estudiante.getEmail(),
             estudiante.getEmailTutor(),
@@ -62,14 +64,10 @@ public class DocenteService {
             fechaAgendada,
             consulta.getTitulo()
         );
+
         return consultaActualizada;
     }
 
-
-    /**
-     * ¡MÉTODO ACTUALIZADO!
-     * Ahora también genera y envía el PDF por correo al estudiante y tutor.
-     */
     @Transactional
     public InformeSesion createInformeAndUpdateConsulta(CreateInformeDTO informeDTO, Long consultaId, String docenteEmail) {
         Usuario docente = usuarioRepository.findByEmail(docenteEmail)
@@ -77,15 +75,15 @@ public class DocenteService {
 
         Consulta consulta = consultaRepository.findById(consultaId)
             .orElseThrow(() -> new RuntimeException("Consulta no encontrada"));
-
+            
         Usuario estudiante = usuarioRepository.findById(consulta.getIdEstudiante())
             .orElseThrow(() -> new RuntimeException("Estudiante no encontrado para la consulta"));
 
-        // 1. Creamos y guardamos el informe en la base de datos
         InformeSesion nuevoInforme = new InformeSesion();
         nuevoInforme.setIdConsulta(consultaId);
         nuevoInforme.setIdDocente(docente.getId());
         nuevoInforme.setFechaCreacion(new Date());
+
         nuevoInforme.setPuntosFuertes(informeDTO.getObservacionesDocente());
         nuevoInforme.setParticipacionGeneral(informeDTO.getParticipacionGeneral());
         nuevoInforme.setCumplimientoTareas(informeDTO.getCumplimientoTareas());
@@ -96,17 +94,14 @@ public class DocenteService {
         nuevoInforme.setCalculoOperaciones(informeDTO.getCalculoOperaciones());
         nuevoInforme.setParticipacionPlataforma(informeDTO.getParticipacionPlataforma());
         
-        // Asignamos valores por defecto a los campos viejos para evitar errores
         nuevoInforme.setAreasAMejorar("N/A");
         nuevoInforme.setRecomendaciones("N/A");
         
         informeSesionRepository.save(nuevoInforme);
 
-        // 2. Actualizamos el estado de la consulta
         consulta.setEstado("Respondida");
         consultaRepository.save(consulta);
 
-        // 3. ¡NUEVO PASO! Generamos el PDF y lo enviamos por correo
         try {
             byte[] pdfContent = pdfService.generarInformePdf(nuevoInforme, estudiante, docente, consulta);
             emailService.sendInformeNotificationEmail(
@@ -116,20 +111,36 @@ public class DocenteService {
                 pdfContent
             );
         } catch (Exception e) {
-            // En un entorno de producción, aquí se registraría el error sin detener el flujo.
             System.err.println("El informe se guardó, pero hubo un error al enviar el correo: " + e.getMessage());
         }
 
         return nuevoInforme;
     }
+    
+    @Transactional
+    public Consulta responderConsultaTexto(Long consultaId, String textoRespuesta, String docenteEmail) {
+        Usuario docente = usuarioRepository.findByEmail(docenteEmail)
+            .orElseThrow(() -> new UsernameNotFoundException("Docente no encontrado"));
+
+        Consulta consulta = consultaRepository.findById(consultaId)
+            .orElseThrow(() -> new RuntimeException("Consulta no encontrada"));
+
+        consulta.setRespuestaTexto(textoRespuesta);
+        consulta.setEstado("Respondida");
+        consulta.setIdDocenteAsignado(docente.getId());
+        
+        return consultaRepository.save(consulta);
+    }
 
     public Consulta iniciarLlamada(Long consultaId) {
-        // ... (código sin cambios)
-         Consulta consulta = consultaRepository.findById(consultaId)
+        Consulta consulta = consultaRepository.findById(consultaId)
             .orElseThrow(() -> new RuntimeException("Consulta no encontrada"));
+
         String nombreSala = "TutorIA-" + consultaId + "-" + UUID.randomUUID().toString().substring(0, 8);
+        
         consulta.setSalaLlamada(nombreSala);
         consulta.setEstado("Llamada en curso");
+        
         return consultaRepository.save(consulta);
     }
 }

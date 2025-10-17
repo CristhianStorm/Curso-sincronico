@@ -50,13 +50,19 @@ public class Consulta {
     private String salaLlamada;
 
     /**
-     * ¡CAMPO NUEVO!
      * Almacena la fecha y hora exactas en que se ha programado una videollamada.
      */
-    @Temporal(TemporalType.TIMESTAMP) // Importante para guardar fecha y hora
+    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "FECHA_LLAMADA_AGENDADA")
     private Date fechaLlamadaAgendada;
 
+    /**
+     * ¡NUEVO CAMPO!
+     * Almacena la respuesta de texto proporcionada por un docente.
+     */
+    @Lob 
+    @Column(name = "RESPUESTA_TEXTO")
+    private String respuestaTexto;
 
     @Temporal(TemporalType.DATE)
     @Column(name = "FECHA_CREACION", updatable = false)

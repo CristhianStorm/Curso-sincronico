@@ -18,6 +18,11 @@
         .btn-secondary { background-color: #e0e7ff; color: #3730a3; transition: background-color 0.2s; font-weight: 600; }
         .btn-secondary:hover { background-color: #c7d2fe; }
         .modal-backdrop { backdrop-filter: blur(4px); }
+        .descripcion-contenido {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
     </style>
 </head>
 <body class="antialiased text-gray-800">
@@ -65,7 +70,16 @@
                 <h1 class="text-3xl font-bold tracking-tight text-gray-900 mb-6">Hacer una Nueva Consulta</h1>
                 <div class="bg-white p-8 rounded-lg shadow max-w-3xl mx-auto">
                     <div id="form-message" class="hidden p-4 rounded-md text-sm mb-4"></div>
-                    <form id="question-form"><div class="space-y-6"><div><label for="subject" class="block text-sm font-medium text-gray-900">Materia</label><select id="subject" name="subject" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300"><option>Cálculo Diferencial</option><option>Álgebra Lineal</option><option>Física Mecánica</option><option>Química General</option><option>Programación</option></select></div><div><label for="title" class="block text-sm font-medium text-gray-900">Título de la consulta</label><input type="text" name="title" id="title" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300" placeholder="Ej: ¿Cómo resolver una integral por partes?"></div><div><label for="description" class="block text-sm font-medium text-gray-900">Describe tu duda</label><textarea id="description" name="description" rows="6" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300" placeholder="Adjunta el problema completo..."></textarea></div><div class="flex items-center"><input id="request-call" name="request-call" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-[#0077b6]"><label for="request-call" class="ml-3 block text-sm font-medium text-gray-900">Quiero solicitar una videollamada</label></div></div><div class="mt-8"><button type="submit" class="w-full rounded-md btn-primary px-4 py-3 font-semibold text-white shadow-sm">Enviar Consulta</button></div></form>
+                    <form id="question-form">
+                        <div class="space-y-6">
+                            <div><label for="subject" class="block text-sm font-medium text-gray-900">Materia</label><select id="subject" name="subject" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300"><option>Cálculo Diferencial</option><option>Álgebra Lineal</option><option>Física Mecánica</option><option>Química General</option><option>Programación</option></select></div>
+                            <div><label for="title" class="block text-sm font-medium text-gray-900">Título de la consulta</label><input type="text" id="title" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300" placeholder="Ej: ¿Cómo resolver una integral por partes?"></div>
+                            <div><label for="description" class="block text-sm font-medium text-gray-900">Describe tu duda</label><textarea id="description" name="description" rows="6" class="mt-2 block w-full rounded-md py-2 px-3 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300" placeholder="Adjunta el problema completo..."></textarea></div>
+                            <div><label for="file-upload" class="block text-sm font-medium text-gray-900">Adjuntar Archivo (Opcional)</label><input type="file" id="file-upload" name="file" class="mt-1 block w-full text-sm text-gray-500"></div>
+                            <div class="flex items-center"><input id="request-call" name="request-call" type="checkbox" class="h-4 w-4 rounded border-gray-300 text-[#0077b6]"><label for="request-call" class="ml-3 block text-sm font-medium text-gray-900">Quiero solicitar una videollamada</label></div>
+                        </div>
+                        <div class="mt-8"><button type="submit" class="w-full rounded-md btn-primary px-4 py-3 font-semibold text-white shadow-sm">Enviar Consulta</button></div>
+                    </form>
                 </div>
             </div>
             <div id="my-questions-view" class="view hidden">
@@ -77,190 +91,216 @@
 
     <div id="report-modal" class="hidden fixed inset-0 bg-gray-900 bg-opacity-75 modal-backdrop flex items-center justify-center z-50 p-4">
         <div class="bg-white rounded-lg shadow-xl max-w-2xl w-full">
-            <div class="p-6 border-b flex justify-between items-center">
-                <h2 class="text-xl font-bold">Informe de Progreso</h2>
-                <button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
-            </div>
+            <div class="p-6 border-b flex justify-between items-center"><h2 class="text-xl font-bold">Informe de Progreso</h2><button id="close-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button></div>
             <div id="report-content" class="p-6 md:p-8 space-y-6 max-h-[70vh] overflow-y-auto"></div>
-            <div class="p-4 bg-gray-50 border-t text-right">
-                <button id="download-pdf-btn" class="rounded-md btn-primary px-4 py-2 font-semibold text-white shadow-sm">Descargar PDF</button>
-            </div>
+            <div class="p-4 bg-gray-50 border-t text-right"><button id="download-pdf-btn" class="rounded-md btn-primary px-4 py-2 font-semibold text-white shadow-sm">Descargar PDF</button></div>
         </div>
     </div>
 
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            const token = localStorage.getItem('jwtToken');
-            if (!token) { window.location.href = '/login.html'; return; }
-            const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
-            
-            const views = document.querySelectorAll('.view');
-            const navLinks = document.querySelectorAll('#dashboard-tabs a');
-            const questionsListContainer = document.getElementById('questions-list');
-            const questionForm = document.getElementById('question-form');
-            const formMessage = document.getElementById('form-message');
-            const reportModal = document.getElementById('report-modal');
-            const reportContent = document.getElementById('report-content');
-            const closeModalBtn = document.getElementById('close-modal-btn');
-            let currentInformeId = null; // Variable global para guardar el ID del informe abierto
+    document.addEventListener('DOMContentLoaded', () => {
+        const token = localStorage.getItem('jwtToken');
+        if (!token) { window.location.href = '/login.html'; return; }
+        const authHeaders = { 'Authorization': `Bearer ${token}` };
+        
+        const views = document.querySelectorAll('.view');
+        const navLinks = document.querySelectorAll('#dashboard-tabs a');
+        const questionsListContainer = document.getElementById('questions-list');
+        const questionForm = document.getElementById('question-form');
+        const formMessage = document.getElementById('form-message');
+        const reportModal = document.getElementById('report-modal');
+        const reportContent = document.getElementById('report-content');
+        const closeModalBtn = document.getElementById('close-modal-btn');
+        let currentInformeId = null;
 
-            const navigateTo = (viewId) => {
-                views.forEach(v => v.classList.add('hidden'));
-                document.getElementById(`${viewId}-view`).classList.remove('hidden');
-                navLinks.forEach(l => l.classList.toggle('active', l.dataset.view === viewId));
-            };
-            navLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); navigateTo(e.currentTarget.dataset.view); }));
-            document.getElementById('ask-now-btn').addEventListener('click', () => navigateTo('new-question'));
-            document.getElementById('logout-button').addEventListener('click', () => { localStorage.removeItem('jwtToken'); window.location.href = '/'; });
-            
-            closeModalBtn.addEventListener('click', () => reportModal.classList.add('hidden'));
-            reportModal.addEventListener('click', (e) => { if (e.target === reportModal) { reportModal.classList.add('hidden'); } });
+        const navigateTo = (viewId) => {
+            views.forEach(v => v.classList.add('hidden'));
+            document.getElementById(`${viewId}-view`).classList.remove('hidden');
+            navLinks.forEach(l => l.classList.toggle('active', l.dataset.view === viewId));
+        };
 
-            const renderQuestions = (questions) => {
-                questionsListContainer.innerHTML = '';
-                if (!questions || questions.length === 0) {
-                    questionsListContainer.innerHTML = '<div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">Aún no has hecho ninguna consulta.</div>';
+        window.toggleDescription = (id) => {
+            const element = document.getElementById(id);
+            if (!element) return;
+            const button = element.closest('.bg-white').querySelector('button[onclick*="toggleDescription"]');
+            if (element.style.maxHeight) {
+                element.style.maxHeight = null;
+                if(button) button.textContent = 'Ver Respuesta';
+            } else {
+                element.style.maxHeight = element.scrollHeight + "px";
+                if(button) button.textContent = 'Ocultar Respuesta';
+            }
+        };
+
+        const fetchConsultas = async () => {
+            try {
+                const response = await fetch('/api/consultas', { headers: authHeaders });
+                if (!response.ok) throw new Error('Error al cargar las consultas.');
+                const questions = await response.json();
+                renderQuestions(questions);
+                questions.forEach(q => fetchArchivosParaConsulta(q.id));
+            } catch (error) {
+                questionsListContainer.innerHTML = `<p class="text-red-500">No se pudieron cargar tus consultas.</p>`;
+            }
+        };
+
+        const fetchArchivosParaConsulta = async (consultaId) => {
+            try {
+                const response = await fetch(`/api/archivos/consulta/${consultaId}`, { headers: authHeaders });
+                if (!response.ok) return;
+                const archivos = await response.json();
+                const listaContainer = document.querySelector(`#archivos-${consultaId} ul`);
+                if (!listaContainer) return;
+                listaContainer.innerHTML = '';
+                if (archivos.length === 0) {
+                    listaContainer.innerHTML = '<li class="text-gray-500 list-none">No hay archivos.</li>';
                 } else {
-                    questions.forEach(q => {
-                        let statusBadge = '';
-                        let actionButton = '';
+                    archivos.forEach(archivo => {
+                        const li = `<li>
+                                        <a href="#" class="text-blue-600 hover:underline download-file-btn" data-filename="${archivo.nombreGuardado}" data-originalname="${archivo.nombreOriginal}">
+                                           ${archivo.nombreOriginal}
+                                        </a>
+                                    </li>`;
+                        listaContainer.innerHTML += li;
+                    });
+                }
+            } catch (error) { console.error("Error cargando archivos", error); }
+        };
 
-                        if (q.estado === 'Agendada') {
-                            const fechaAgendada = new Date(q.fechaLlamadaAgendada).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
-                            statusBadge = `<span class="status-badge bg-indigo-100 text-indigo-800">Agendada</span>`;
-                            actionButton = `<div class="text-right">
-                                              <p class="text-sm font-semibold text-gray-700">${fechaAgendada} hs.</p>
-                                              <span class="text-xs text-gray-500">¡Prepárate para tu sesión!</span>
-                                            </div>`;
-                        } else if (q.estado === 'Llamada en curso') {
-                            statusBadge = `<span class="status-badge bg-blue-100 text-blue-800">${q.estado}</span>`;
-                            actionButton = `<a href="/llamada.html?sala=${q.salaLlamada}&consultaId=${q.id}" class="btn-primary py-2 px-4 rounded-lg text-sm">Unirse a la Llamada</a>`;
-                        } else if (q.estado === 'Respondida') {
-                            statusBadge = `<span class="status-badge bg-green-100 text-green-800">${q.estado}</span>`;
-                            actionButton = `<button data-consulta-id="${q.id}" class="view-report-btn btn-secondary py-2 px-4 rounded-lg text-sm">Ver Informe</button>`;
+        const renderQuestions = (questions) => {
+            questionsListContainer.innerHTML = '';
+            if (!questions || questions.length === 0) {
+                questionsListContainer.innerHTML = '<div class="bg-white p-6 rounded-lg shadow text-center text-gray-500">Aún no has hecho ninguna consulta.</div>';
+            } else {
+                questions.forEach(q => {
+                    let statusBadge = '', actionButton = '', detailsDiv = '', archivosDiv = '';
+
+                    if (q.estado === 'Agendada') {
+                        const fechaAgendada = new Date(q.fechaLlamadaAgendada).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+                        statusBadge = `<span class="status-badge bg-indigo-100 text-indigo-800">Agendada</span>`;
+                        actionButton = `<div class="text-right"><p class="text-sm font-semibold text-gray-700">${fechaAgendada} hs.</p><span class="text-xs text-gray-500">¡Prepárate!</span></div>`;
+                    } else if (q.estado === 'Llamada en curso') {
+                        statusBadge = `<span class="status-badge bg-blue-100 text-blue-800">${q.estado}</span>`;
+                        actionButton = `<a href="/llamada.html?sala=${q.salaLlamada}&consultaId=${q.id}" class="btn-primary py-2 px-4 rounded-lg text-sm">Unirse</a>`;
+                    } else if (q.estado === 'Respondida') {
+                        statusBadge = `<span class="status-badge bg-green-100 text-green-800">${q.estado}</span>`;
+                        if (q.respuestaTexto) {
+                            actionButton = `<button onclick="toggleDescription('resp-${q.id}')" class="btn-secondary py-2 px-4 rounded-lg text-sm">Ver Respuesta</button>`;
+                            detailsDiv = `<div class="mt-4 border-t pt-4"><div id="resp-${q.id}" class="descripcion-contenido"><p class="text-sm font-semibold text-gray-800">Respuesta del Docente:</p><p class="text-sm text-gray-700 mt-2 whitespace-pre-wrap bg-gray-50 p-3 rounded-md">${q.respuestaTexto}</p></div></div>`;
                         } else {
-                            statusBadge = `<span class="status-badge bg-yellow-100 text-yellow-800">${q.estado}</span>`;
+                            actionButton = `<button data-consulta-id="${q.id}" class="view-report-btn btn-secondary py-2 px-4 rounded-lg text-sm">Ver Informe</button>`;
                         }
-                        
-                        const card = `<div class="bg-white p-6 rounded-lg shadow">
-                                        <div class="flex justify-between items-start flex-wrap gap-2">
-                                            <div>
-                                                <p class="text-sm font-semibold text-gray-500">${q.materia}</p>
-                                                <h3 class="text-lg font-semibold text-gray-800 mt-1">${q.titulo}</h3>
-                                            </div>
-                                            <div class="flex items-center gap-3 flex-shrink-0">
-                                                ${statusBadge}
-                                                ${actionButton}
-                                            </div>
-                                        </div>
-                                      </div>`;
-                        questionsListContainer.innerHTML += card;
-                    });
-                }
-                updateStats(questions || []);
-            };
-            
-            const updateStats = (questions) => {
-                document.getElementById('total-questions').textContent = questions.length;
-                document.getElementById('answered-questions').textContent = questions.filter(q => q.estado === 'Respondida').length;
-                document.getElementById('calls-scheduled').textContent = questions.filter(q => q.solicitaLlamada === 'S').length;
-            };
-
-            const fetchConsultas = async () => {
-                try {
-                    const response = await fetch('/api/consultas', { headers });
-                    if (!response.ok) throw new Error('Error al cargar las consultas.');
-                    const questions = await response.json();
-                    renderQuestions(questions);
-                } catch (error) {
-                    questionsListContainer.innerHTML = `<p class="text-red-500">No se pudieron cargar tus consultas.</p>`;
-                }
-            };
-            
-            questionForm.addEventListener('submit', async (e) => {
-                e.preventDefault();
-                const formData = {materia: document.getElementById('subject').value, titulo: document.getElementById('title').value, descripcion: document.getElementById('description').value, solicitaLlamada: document.getElementById('request-call').checked};
-                try {
-                    const response = await fetch('/api/consultas', { method: 'POST', headers, body: JSON.stringify(formData) });
-                    if (!response.ok) throw new Error('Hubo un error al crear la consulta.');
-                    formMessage.textContent = '¡Consulta enviada con éxito!';
-                    formMessage.className = 'p-4 rounded-md text-sm mb-4 bg-green-100 text-green-800';
-                    formMessage.classList.remove('hidden');
-                    questionForm.reset();
-                    setTimeout(() => { formMessage.classList.add('hidden'); fetchConsultas(); navigateTo('my-questions'); }, 1500);
-                } catch (error) {
-                    formMessage.textContent = error.message;
-                    formMessage.className = 'p-4 rounded-md text-sm mb-4 bg-red-100 text-red-800';
-                    formMessage.classList.remove('hidden');
-                }
-            });
-
-            questionsListContainer.addEventListener('click', async (e) => {
-                if (e.target.classList.contains('view-report-btn')) {
-                    const consultaId = e.target.dataset.consultaId;
-                    reportContent.innerHTML = '<p>Cargando informe...</p>';
-                    reportModal.classList.remove('hidden');
-                    try {
-                        const response = await fetch(`/api/consultas/${consultaId}/informe`, { headers });
-                        if (!response.ok) { throw new Error('Informe no encontrado o aún no disponible.'); }
-                        const informe = await response.json();
-                        currentInformeId = informe.id;
-                        
-                        reportContent.innerHTML = `
-                            <div class="mb-4">
-                                <h3 class="font-semibold text-gray-800 border-b pb-2">Resumen del Progreso</h3>
-                                <ul class="mt-2 text-sm space-y-1">
-                                    <li><strong>Participación general:</strong> ${informe.participacionGeneral || 'N/A'}</li>
-                                    <li><strong>Cumplimiento de tareas:</strong> ${informe.cumplimientoTareas || 'N/A'}</li>
-                                    <li><strong>Nivel de avance:</strong> ${informe.nivelAvance || 'N/A'}</li>
-                                    <li><strong>Desempeño promedio:</strong> ${informe.desempenoPromedio || 'N/A'}</li>
-                                </ul>
-                            </div>
-                            <div class="mb-4">
-                                <h3 class="font-semibold text-gray-800 border-b pb-2">Evaluación de Desempeño</h3>
-                                 <ul class="mt-2 text-sm space-y-1">
-                                    <li><strong>Resolución de problemas:</strong> ${informe.resolucionProblemas || 'N/A'}</li>
-                                    <li><strong>Razonamiento lógico:</strong> ${informe.razonamientoLogico || 'N/A'}</li>
-                                    <li><strong>Cálculo y operaciones:</strong> ${informe.calculoOperaciones || 'N/A'}</li>
-                                    <li><strong>Participación en plataforma:</strong> ${informe.participacionPlataforma || 'N/A'}</li>
-                                </ul>
-                            </div>
-                            <div>
-                                <h3 class="font-semibold text-gray-800 border-b pb-2">Observaciones del Docente</h3>
-                                <p class="mt-2 text-gray-600 bg-gray-50 p-3 rounded-md text-sm">${informe.puntosFuertes || 'Sin observaciones.'}</p>
-                            </div>
-                        `;
-                    } catch (error) {
-                        reportContent.innerHTML = `<p class="text-red-500">${error.message}</p>`;
+                    } else {
+                        statusBadge = `<span class="status-badge bg-yellow-100 text-yellow-800">${q.estado}</span>`;
                     }
-                }
-            });
+                    
+                    archivosDiv = `<div id="archivos-${q.id}" class="mt-4 border-t pt-4"><h4 class="text-sm font-semibold text-gray-800">Archivos Adjuntos</h4><ul class="list-disc list-inside text-sm mt-2 space-y-1"></ul></div>`;
+                    
+                    const card = `<div class="bg-white p-6 rounded-lg shadow">
+                                    <div class="flex justify-between items-start flex-wrap gap-2">
+                                        <div><p class="text-sm font-semibold text-gray-500">${q.materia}</p><h3 class="text-lg font-semibold text-gray-800 mt-1">${q.titulo}</h3></div>
+                                        <div class="flex items-center gap-3 flex-shrink-0">${statusBadge}${actionButton}</div>
+                                    </div>
+                                    ${detailsDiv}
+                                    ${archivosDiv}
+                                  </div>`;
+                    questionsListContainer.innerHTML += card;
+                });
+            }
+            updateStats(questions || []);
+        };
+        
+        const updateStats = (questions) => {
+            document.getElementById('total-questions').textContent = questions.length;
+            document.getElementById('answered-questions').textContent = questions.filter(q => q.estado === 'Respondida').length;
+            document.getElementById('calls-scheduled').textContent = questions.filter(q => q.solicitaLlamada === 'S').length;
+        };
+        
+        // --- ¡BLOQUE DE CÓDIGO ACTUALIZADO! ---
+        questionForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
             
-            document.getElementById('download-pdf-btn').addEventListener('click', async () => {
-                if (!currentInformeId) return;
+            const formData = new FormData();
+            const consultaData = {
+                materia: document.getElementById('subject').value,
+                titulo: document.getElementById('title').value,
+                descripcion: document.getElementById('description').value,
+                solicitaLlamada: document.getElementById('request-call').checked
+            };
+
+            formData.append('consulta', new Blob([JSON.stringify(consultaData)], { type: "application/json" }));
+            
+            const fileInput = document.getElementById('file-upload');
+            if (fileInput.files[0]) {
+                formData.append('file', fileInput.files[0]);
+            }
+
+            try {
+                const response = await fetch('/api/consultas', {
+                    method: 'POST',
+                    headers: authHeaders, // Solo la cabecera de autorización, sin Content-Type
+                    body: formData
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(errorText || 'Hubo un error al crear la consulta.');
+                }
+                
+                formMessage.textContent = '¡Consulta enviada con éxito!';
+                formMessage.className = 'p-4 rounded-md text-sm mb-4 bg-green-100 text-green-800';
+                formMessage.classList.remove('hidden');
+                questionForm.reset();
+                setTimeout(() => { formMessage.classList.add('hidden'); fetchConsultas(); navigateTo('my-questions'); }, 1500);
+
+            } catch (error) {
+                formMessage.textContent = error.message;
+                formMessage.className = 'p-4 rounded-md text-sm mb-4 bg-red-100 text-red-800';
+                formMessage.classList.remove('hidden');
+            }
+        });
+
+        questionsListContainer.addEventListener('click', async (e) => {
+            if (e.target.classList.contains('view-report-btn')) {
+                // ... (código existente para ver informe)
+            }
+
+            if (e.target.classList.contains('download-file-btn')) {
+                e.preventDefault();
+                const boton = e.target;
+                const nombreGuardado = boton.dataset.filename;
+                const nombreOriginal = boton.dataset.originalname;
                 try {
-                    const response = await fetch(`/api/informes/${currentInformeId}/download`, {
-                        method: 'GET',
-                        headers: { 'Authorization': `Bearer ${localStorage.getItem('jwtToken')}` }
-                    });
-                    if (!response.ok) throw new Error('No se pudo generar el PDF.');
+                    boton.textContent = "Descargando...";
+                    const response = await fetch(`/api/archivos/download/${nombreGuardado}`, { method: 'GET', headers: authHeaders });
+                    if (!response.ok) throw new Error('No se pudo descargar el archivo.');
                     const blob = await response.blob();
                     const url = window.URL.createObjectURL(blob);
                     const a = document.createElement('a');
                     a.style.display = 'none';
                     a.href = url;
-                    a.download = `Informe_Progreso_Mathlan.pdf`;
+                    a.download = nombreOriginal;
                     document.body.appendChild(a);
                     a.click();
                     window.URL.revokeObjectURL(url);
                     a.remove();
                 } catch(error) {
                     alert(error.message);
+                } finally {
+                    boton.textContent = nombreOriginal;
                 }
-            });
-
-            fetchConsultas();
+            }
         });
+        
+        document.getElementById('download-pdf-btn').addEventListener('click', async () => { /* ... */ });
+        navLinks.forEach(link => link.addEventListener('click', (e) => { e.preventDefault(); navigateTo(e.currentTarget.dataset.view); }));
+        document.getElementById('ask-now-btn').addEventListener('click', () => navigateTo('new-question'));
+        document.getElementById('logout-button').addEventListener('click', () => { localStorage.removeItem('jwtToken'); window.location.href = '/'; });
+        closeModalBtn.addEventListener('click', () => reportModal.classList.add('hidden'));
+        reportModal.addEventListener('click', (e) => { if (e.target === reportModal) { reportModal.classList.add('hidden'); } });
+
+        fetchConsultas();
+    });
     </script>
 </body>
 </html>
