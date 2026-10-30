@@ -81,4 +81,3 @@ Proyecto académico con integraciones que requieren configuración. No se public
 ---
 
 [CS // Software Lab · Cristhian Storm](https://github.com/CristhianStorm)
-
